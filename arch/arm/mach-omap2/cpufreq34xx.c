@@ -41,7 +41,7 @@ static unsigned long omap3_l3_get_rate(struct device *dev);
 
 struct clk *dpll1_clk, *dpll2_clk, *dpll3_clk;
 
-#if 0 //me change
+#if 0 //me change 2012.05.20
 static struct omap_opp_def __initdata omap34xx_opp_def_list[] = {
 	/* MPU OPP1 */
 	OMAP_OPP_DEF("mpu", true, 125000000, 1100000),

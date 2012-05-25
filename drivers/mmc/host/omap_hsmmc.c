@@ -40,7 +40,7 @@
 
 static int debug_dma_ch =0;
 
-#define _SOFTWARE_TIMEOUT_
+//#define _SOFTWARE_TIMEOUT_
 #define _MMC_SAFE_ACCESS_
 /* OMAP HSMMC Host Controller Registers */
 #define OMAP_HSMMC_SYSCONFIG	0x0010
@@ -2197,7 +2197,7 @@ static int __init omap_hsmmc_probe(struct platform_device *pdev)
 		mmc_slot(host).no_off = 1;
 
 	mmc->f_min	= 400000;
-	mmc->f_max	= 52000000;
+	mmc->f_max	= 48000000;//52000000;
 
 	spin_lock_init(&host->irq_lock);
 

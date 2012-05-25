@@ -166,7 +166,7 @@ static user_count_t P_user;
 /*Wait queue*/
 static P_queue_t P_waitq;
 
-//static struct wake_lock P_sensor_wake_lock;
+static struct wake_lock P_sensor_wake_lock;
 
 /*****************************************************************************/
 /*****************************************************************************/
@@ -561,8 +561,8 @@ static int P_ioctl(struct inode *inode, struct file *filp, unsigned int ioctl_cm
 static irqreturn_t P_isr( int irq, void *unused )
 {
 	int ret = 0; // ryun
-	//wake_lock_timeout(&P_sensor_wake_lock, 3*HZ);
-       // wake_lock_timeout(&P_sensor_wake_lock, 2*HZ);//me change 2012.04.30
+	wake_lock_timeout(&P_sensor_wake_lock, 3*HZ);
+        //wake_lock_timeout(&P_sensor_wake_lock, 1*HZ);//me change 2012.03
 	debug("[ryun] Proximity interrupt!! \n");
     trace_in(); 
 
@@ -973,7 +973,7 @@ int __init PL_driver_init(void)
     }
     #endif
 
-    //wake_lock_init(&P_sensor_wake_lock, WAKE_LOCK_SUSPEND, "P_sensor");
+    wake_lock_init(&P_sensor_wake_lock, WAKE_LOCK_SUSPEND, "P_sensor");
 
     trace_out();
     return ret;

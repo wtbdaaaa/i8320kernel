@@ -1,1 +1,0 @@
-cmd_sound/soc/codecs/built-in.o :=  arm-none-eabi-ld -EL    -r -o sound/soc/codecs/built-in.o sound/soc/codecs/snd-soc-twl4030.o sound/soc/codecs/snd-soc-max9877.o sound/soc/codecs/sec_gain_nowplus.o sound/soc/codecs/sec_gain_dummy_driver.o 

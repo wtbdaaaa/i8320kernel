@@ -531,7 +531,7 @@ static __devexit int max9877_i2c_remove(struct i2c_client *client)
 
 static int max9877_suspend(struct i2c_client *client, pm_message_t mesg)
 {
-	P("");
+	P("max9877_suspend--------------");
 
 #if 0
 	max9877_regs[0] = 0x0;
@@ -548,6 +548,7 @@ static int max9877_suspend(struct i2c_client *client, pm_message_t mesg)
 
 static int max9877_resume(struct i2c_client *client)
 {
+       P("max9877_resume--------------");
 	#if 0
 	max9877_regs[0] = 0x40;
 	max9877_regs[1] = 0x1e;

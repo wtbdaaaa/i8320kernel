@@ -2099,11 +2099,11 @@ static int omapfb_fb_init(struct omapfb2_device *fbdev, struct fb_info *fbi)
 
 	if (display) {
 
-                //printk(KERN_INFO " **** [LCD] omapfb_fb_init :: START.--------display\n");
+                printk(KERN_INFO " **** [LCD] omapfb_fb_init :: START.--------display\n");
 		u16 w, h;
 		int rotation = (var->rotate + ofbi->rotation[0]) % 4;
 		display->driver->get_resolution(display, &w, &h);
-               // printk(KERN_INFO " **** [LCD] omapfb_fb_init :: START.--------display w=%d   h=%d\n", w , h);
+
 		if (ofbi->rotation_type == OMAP_DSS_ROT_TILER) {
 				var->xres = w;
 				var->yres = h;
@@ -2140,7 +2140,7 @@ static int omapfb_fb_init(struct omapfb2_device *fbdev, struct fb_info *fbi)
 		/* if there's no display, let's just guess some basic values */
 		var->xres = 320;
 		var->yres = 240;
-               	var->xres_virtual = var->xres;
+		var->xres_virtual = var->xres;
 		var->yres_virtual = var->yres;
 		if (!var->bits_per_pixel)
 			var->bits_per_pixel = 16;

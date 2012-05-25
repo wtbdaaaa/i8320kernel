@@ -32,6 +32,19 @@
 #include <linux/interrupt.h>
 #include <linux/regulator/consumer.h>
 #include <linux/input/synaptics_i2c_rmi4.h>
+#define touch_boost //me add 2012.04.18
+#include <linux/time.h>
+#include <plat/omap-pm.h>
+//add touch boost funtion //me add 2012.04.18
+
+#define touch_boost
+#define VDD1_OPP5_FREQ         600000000
+#define VDD1_OPP4_FREQ         550000000
+#define VDD1_OPP3_FREQ         500000000
+#define VDD1_OPP1_FREQ         250000000
+
+
+
 
 /* TODO: for multiple device support will need a per-device mutex */
 #define DRIVER_NAME "synaptics_rmi4_i2c"
@@ -175,6 +188,9 @@ struct synaptics_rmi4_device_info {
  *
  * This structure gives the device data information.
  */
+
+struct synaptics_rmi4_data;
+
 struct synaptics_rmi4_data {
 	struct synaptics_rmi4_device_info rmi4_mod_info;
 	struct input_dev	*input_dev;
@@ -193,7 +209,15 @@ struct synaptics_rmi4_data {
 	wait_queue_head_t	wait;
 	bool			touch_stopped;
 	struct early_suspend		early_suspend;
+
+#ifdef touch_boost //me add 2012.04.18
+        struct device *dev;//me change
+	struct timer_list opp_set_timer;	// ryun 20100107 for touch boost
+	struct work_struct constraint_wq;
+	int opp_high;	// ryun 20100107 for touch boost	
+#endif
 };
+struct synaptics_rmi4_data *rmi4_data;//me moved hear 2012.04.18
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 static void synaptics_rmi4_early_suspend(struct early_suspend *handler);
@@ -207,6 +231,24 @@ static void synaptics_rmi4_late_resume(struct early_suspend *handler);
  *
  * This function is used to set the page and returns integer.
  */
+
+#ifdef touch_boost //me add 2012.04.18
+
+static void tsc_timer_out (unsigned long v)
+	{
+		schedule_work(&rmi4_data->constraint_wq);
+		return;
+	}
+
+void tsc_remove_constraint_handler(struct work_struct *work)
+{
+		omap_pm_set_min_mpu_freq(rmi4_data->dev, VDD1_OPP1_FREQ);
+                //printk("[TSP][WARNING] == omap_pm_set_min_mpu_freq:VDD1_OPP1_FREQ\n");
+                rmi4_data->opp_high = 0;
+} 
+
+#endif
+
 static int synaptics_rmi4_set_page(struct synaptics_rmi4_data *pdata,
 					unsigned int address)
 {
@@ -356,6 +398,18 @@ static int synpatics_rmi4_touchpad_report(struct synaptics_rmi4_data *pdata,
 	int	wy[RMI4_NUMBER_OF_MAX_FINGERS];
 	int	z[RMI4_NUMBER_OF_MAX_FINGERS];
 	struct	i2c_client *client = pdata->i2c_client;
+
+#ifdef touch_boost//me add 2012.04.14//	added for touchscreen boost,samsung customisation
+                //struct touchscreen_t *ts = container_of(work,
+		//			struct touchscreen_t, tsp_work);
+	
+		if (timer_pending(&pdata->opp_set_timer))
+			del_timer(&pdata->opp_set_timer);
+		omap_pm_set_min_mpu_freq(pdata->dev, VDD1_OPP3_FREQ);
+                //printk("[TSP][WARNING] == omap_pm_set_min_mpu_freq:VDD1_OPP3_FREQ\n");
+		mod_timer(&pdata->opp_set_timer, jiffies + (1000 * HZ) / 1000);
+
+#endif
 
 	/* get 2D sensor finger data */
 	/*
@@ -618,7 +672,7 @@ static int synpatics_rmi4_touchpad_detect(struct synaptics_rmi4_data *pdata,
 	 */
 	if ((queries[1] & MASK_3BIT) <= 4)
 		/* add 1 since zero based */
-		rfi->num_of_data_points = /*(queries[1] & MASK_3BIT) + */1;//me change//1//
+		rfi->num_of_data_points = (queries[1] & MASK_3BIT) + 1;//me change//1//
 	else {
 		/*
 		 * a value of 5 is up to 10 fingers - 6 and 7 are reserved
@@ -955,7 +1009,7 @@ static int __devinit synaptics_rmi4_probe
 	int retval;
 	unsigned char intr_status[4];
         unsigned char status;//me add
-	struct synaptics_rmi4_data *rmi4_data;
+	//struct synaptics_rmi4_data *rmi4_data;//me close 2012.04.18
 	const struct synaptics_rmi4_platform_data *platformdata =
 						client->dev.platform_data;
 
@@ -1088,7 +1142,16 @@ static int __devinit synaptics_rmi4_probe
 	rmi4_data->early_suspend.suspend = synaptics_rmi4_early_suspend;
 	rmi4_data->early_suspend.resume = synaptics_rmi4_late_resume;
 	register_early_suspend(&rmi4_data->early_suspend);
-    #endif
+        #endif
+
+  #ifdef touch_boost
+  	init_timer(&rmi4_data->opp_set_timer);
+  	rmi4_data->opp_set_timer.data = (unsigned long)rmi4_data; 
+  	rmi4_data->opp_set_timer.function = tsc_timer_out;
+        rmi4_data->dev = &client->dev;
+        
+	INIT_WORK(&rmi4_data->constraint_wq, tsc_remove_constraint_handler);
+  #endif
 
 	return retval;
 
@@ -1187,8 +1250,10 @@ static int synaptics_rmi4_suspend(struct i2c_client *client, pm_message_t mesg)
 
 
 #endif
-#if 1 //me change				
+#if 0 //me change				
     nowplus_enable_touch_pins(0);
+#endif
+#if 0 //me change
 	if (pdata->regulator_en)
 		regulator_disable(rmi4_data->regulator);
 #endif
@@ -1210,12 +1275,13 @@ static int synaptics_rmi4_resume(struct i2c_client *client)
 	unsigned char status;
 	struct synaptics_rmi4_data *rmi4_data = i2c_get_clientdata(client);
 	const struct synaptics_rmi4_platform_data *pdata = rmi4_data->board;
-#if 1//me change
+#if 0//me change
 	if (pdata->regulator_en)
 		regulator_enable(rmi4_data->regulator);
 #endif		
-	nowplus_enable_touch_pins(1);
-
+#if 0 //me change
+	//nowplus_enable_touch_pins(1);
+#endif
 	enable_irq(pdata->irq_number);
 	rmi4_data->touch_stopped = false;
 #if 0 //me add

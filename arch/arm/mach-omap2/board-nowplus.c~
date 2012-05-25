@@ -77,7 +77,7 @@
 #include "cm.h"
 #include "mux.h"
 
-#define archer_sleep //me add
+//#define archer_sleep //me add
 
 #include "sdram-nowplus.h"
 #include <linux/ctype.h>
@@ -190,7 +190,7 @@ EXPORT_SYMBOL(usbsel_notify);
 extern unsigned get_last_off_on_transaction_id(struct device *dev);
 
 extern int omap34xx_pad_set_config_lcd(u16 pad_pin,u16 pad_val);
-#if 1
+#if 0
 int nowplus_enable_touch_pins(int enable) {
     if (enable) {
 #ifndef FEATURE_SUSPEND_BY_DISABLING_POWER
@@ -884,7 +884,8 @@ static struct omap_board_config_kernel nowplus_config[] __initdata = {
         OMAP3_MUX(GPMC_NWP,             OMAP34XX_MUX_MODE0 | OMAP34XX_PIN_INPUT),
         OMAP3_MUX(GPMC_WAIT0,           OMAP34XX_MUX_MODE0 | OMAP34XX_PIN_INPUT_PULLUP),
         //"BT_nSHUTDOWN" gpio_63	
-        OMAP3_MUX(GPMC_WAIT1,           OMAP34XX_MUX_MODE4 | OMAP34XX_PIN_INPUT_PULLDOWN),
+        OMAP3_MUX(GPMC_WAIT1,           OMAP34XX_MUX_MODE4 | OMAP34XX_PIN_INPUT_PULLDOWN),//me change 2012.05.20
+        //OMAP3_MUX(GPMC_WAIT1,           OMAP34XX_MUX_MODE4 | OMAP34XX_PIN_OUTPUT | OMAP34XX_PIN_OFF_OUTPUT_LOW),
         //"CAMERA VGA RST" gpio_64
         OMAP3_MUX(GPMC_WAIT2,           OMAP34XX_MUX_MODE4 | OMAP34XX_PIN_INPUT_PULLDOWN),
         //"FM_nRST" gpio_65
@@ -1036,13 +1037,13 @@ static struct omap_board_config_kernel nowplus_config[] __initdata = {
         //"MOVI DATA 3"
         OMAP3_MUX(SDMMC2_DAT3,          OMAP34XX_MUX_MODE0 | OMAP34XX_PIN_INPUT | OMAP34XX_PIN_OFF_INPUT_PULLDOWN),
         //"MOVI DATA 4"
-        OMAP3_MUX(SDMMC2_DAT4,          OMAP34XX_MUX_MODE7),
+        OMAP3_MUX(SDMMC2_DAT4,          OMAP34XX_MUX_MODE0 | OMAP34XX_PIN_INPUT | OMAP34XX_PIN_OFF_INPUT_PULLDOWN),
         //"MOVI DATA 5"
-        OMAP3_MUX(SDMMC2_DAT5,          OMAP34XX_MUX_MODE7),
+        OMAP3_MUX(SDMMC2_DAT5,          OMAP34XX_MUX_MODE0 | OMAP34XX_PIN_INPUT | OMAP34XX_PIN_OFF_INPUT_PULLDOWN),
         //"MOVI DATA 6"
-        OMAP3_MUX(SDMMC2_DAT6,          OMAP34XX_MUX_MODE7),
+        OMAP3_MUX(SDMMC2_DAT6,          OMAP34XX_MUX_MODE0 | OMAP34XX_PIN_INPUT | OMAP34XX_PIN_OFF_INPUT_PULLDOWN),
         //"MOVI DATA 7"
-        OMAP3_MUX(SDMMC2_DAT7,          OMAP34XX_MUX_MODE7),
+        OMAP3_MUX(SDMMC2_DAT7,          OMAP34XX_MUX_MODE0 | OMAP34XX_PIN_INPUT | OMAP34XX_PIN_OFF_INPUT_PULLDOWN),
 
         //"PHONE ON" gpio_140
      
@@ -1065,13 +1066,12 @@ static struct omap_board_config_kernel nowplus_config[] __initdata = {
     	OMAP3_MUX(MCBSP3_FSX,           OMAP34XX_MUX_MODE7),
 
 	    //"BTUART CTS"
-        OMAP3_MUX(UART2_CTS,            OMAP34XX_MUX_MODE0 | OMAP34XX_PIN_INPUT), 
-        
-         //"BTUART RTS"
+        OMAP3_MUX(UART2_CTS,            OMAP34XX_MUX_MODE0 | OMAP34XX_PIN_INPUT),
+        //"BTUART RTS"
         OMAP3_MUX(UART2_RTS,            OMAP34XX_MUX_MODE0), 
-         //"BTUART TXD"
-       OMAP3_MUX(UART2_TX,             OMAP34XX_MUX_MODE0), 
-         //"BTUART RXD"
+        //"BTUART TXD"
+       OMAP3_MUX(UART2_TX,             OMAP34XX_MUX_MODE0),
+       //"BTUART RXD"
         OMAP3_MUX(UART2_RX,             OMAP34XX_MUX_MODE0 | OMAP34XX_PIN_INPUT_PULLUP), 
         OMAP3_MUX(UART1_TX,             OMAP34XX_MUX_MODE7),
         OMAP3_MUX(UART1_RTS,            OMAP34XX_MUX_MODE7),
@@ -1301,8 +1301,7 @@ static struct omap_board_config_kernel nowplus_config[] __initdata = {
         //"NAND INT" gpio_13
         OMAP3_MUX(ETK_CTL,                      OMAP34XX_MUX_MODE4 | OMAP34XX_PIN_INPUT_PULLUP),
         //"ALARM_AP" gpio_14
-
-        OMAP3_MUX(ETK_D11,  OMAP34XX_MUX_MODE7),// me ok 2012.05.20
+        OMAP3_MUX(ETK_D11,  OMAP34XX_MUX_MODE7),//me ok 2012.05.20
         //OMAP3_MUX(ETK_D0,                       OMAP34XX_MUX_MODE4 | OMAP34XX_PIN_INPUT | OMAP34XX_PIN_OFF_INPUT),//me chnage
 
         //"INTERRUPT FROM PHONE"  gpio_15
@@ -1320,7 +1319,7 @@ static struct omap_board_config_kernel nowplus_config[] __initdata = {
           //"WLAN SDIO DAT3"
         OMAP3_MUX(ETK_D6,                       OMAP34XX_MUX_MODE2 | OMAP34XX_PIN_INPUT_PULLUP),
         //"WLAN IRQ"
-        //OMAP3_MUX(ETK_D7,                     OMAP34XX_MUX_MODE4 | OMAP34XX_PIN_INPUT_PULLDOWN),//???//me ok
+        //OMAP3_MUX(ETK_D7,                       OMAP34XX_MUX_MODE4 | OMAP34XX_PIN_INPUT_PULLDOWN),
         OMAP3_MUX(ETK_D7,                       OMAP34XX_MUX_MODE4 | OMAP34XX_PIN_INPUT_PULLUP | OMAP34XX_PIN_OFF_INPUT_PULLDOWN),//me ok 2012.05.20
         //"TWL4030 MSECURE"
         OMAP3_MUX(ETK_D8,                       OMAP34XX_MUX_MODE4 | OMAP34XX_PIN_INPUT_PULLUP),
@@ -1517,7 +1516,7 @@ static struct regulator_init_data nowplus_aux1 = {
 	.constraints = {
 		.min_uV			= 3000000,
 		.max_uV			= 3000000,
-                //.always_on		= true,
+                .always_on		= true,
 		.valid_modes_mask	= REGULATOR_MODE_NORMAL
 					| REGULATOR_MODE_STANDBY,
 		.valid_ops_mask		= REGULATOR_CHANGE_MODE
@@ -1533,7 +1532,7 @@ static struct regulator_init_data nowplus_aux2 = {
 		.min_uV			= 2800000,
 		.max_uV			= 2800000,
 		.apply_uV		= true,
-		.always_on		= true,
+                .always_on		= true,
 		.valid_modes_mask	= REGULATOR_MODE_NORMAL
 					| REGULATOR_MODE_STANDBY,
 		.valid_ops_mask		= REGULATOR_CHANGE_MODE
@@ -1548,7 +1547,7 @@ static struct regulator_init_data nowplus_aux2 = {
 static struct regulator_init_data nowplus_vsim = {
 	.constraints = {
 		.min_uV			= 1800000,
-		.max_uV			= 1800000,//3000000,//me change 2012.04.18
+		.max_uV			= 3000000,
 		.always_on		= true,            
 		.boot_on		= true,				
 		.valid_modes_mask	= REGULATOR_MODE_NORMAL
@@ -1690,6 +1689,7 @@ static struct twl4030_usb_data nowplus_usb_data = {
 static struct twl4030_madc_platform_data nowplus_madc_data = {
 	.irq_line	= 1,
 };
+
 #ifdef archer_sleep //archer to old
 static struct twl4030_ins __initdata sleep_on_seq[] = {
 #ifdef TWL4030_USING_BROADCAST_MSG
@@ -3061,7 +3061,7 @@ static void __init omap_nowplus_init(void)
 	nowplus_vaux4_supply.dev = &nowplus_lcd_device.dev;
 	nowplus_vpll2_supply.dev = &nowplus_dss_device.dev;
 //	zeus_vmmc2_supply.dev = &zeus_lcd_device.dev; 
-#if 0//defined(CONFIG_SAMSUNG_ARCHER_TARGET_SK)
+#if 1//defined(CONFIG_SAMSUNG_ARCHER_TARGET_SK)
 	nowplus_vmmc2_supply.dev = &samsung_led_device.dev; // ryun 20100216 for KEY LED driver
 #endif
 // ]

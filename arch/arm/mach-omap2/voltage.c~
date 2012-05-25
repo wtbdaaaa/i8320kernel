@@ -21,7 +21,7 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
-#define DEBUG 1
+//#define DEBUG 1
 #include <linux/pm.h>
 #include <linux/delay.h>
 #include <linux/io.h>
@@ -340,6 +340,7 @@ static struct omap_volt_vc_data vc_config = {
 	.voltoffset = 0xff,
 	.voltsetup2 = 0xff,
 	.vdd0_on = 1200000,        /* 1.2v */
+        //.vdd0_on = 1150000,        /* 1.15v */ //me change 2012.05.18
 	.vdd0_onlp = 1000000,      /* 1.0v */
 	.vdd0_ret = 975000,       /* 0.975v */
 	.vdd0_off = 600000,       /* 0.6v */
@@ -356,7 +357,7 @@ static struct omap_volt_vc_data vc_config = {
  * driver after reading the efuse.
  */
 
-#if 1 //me change
+#if 1 //me change 2012.05.17
 
 /* VDD1 */
 static struct omap_volt_data omap34xx_vdd1_volt_data[] = {
@@ -365,7 +366,8 @@ static struct omap_volt_data omap34xx_vdd1_volt_data[] = {
 	{.volt_nominal = 1350000, .sr_errminlimit = 0xFA, .vp_errgain = 0x20},
 	{.volt_nominal = 1375000, .sr_errminlimit = 0xFA, .vp_errgain = 0x20},
 	{.volt_nominal = 1437500, .sr_errminlimit = 0xFA, .vp_errgain = 0x20},
-	{.volt_nominal = 1450000, .sr_errminlimit = 0xFA, .vp_errgain = 0x20},
+	//{.volt_nominal = 1450000, .sr_errminlimit = 0xFA, .vp_errgain = 0x20},
+        {.volt_nominal = 1437500, .sr_errminlimit = 0xFA, .vp_errgain = 0x20},//me change 2012.05.20
 };
 #else
 
@@ -376,6 +378,7 @@ static struct omap_volt_data omap34xx_vdd1_volt_data[] = {
 	{.volt_nominal = 1200000, .sr_errminlimit = 0xF9, .vp_errgain = 0x18},
 	{.volt_nominal = 1270000, .sr_errminlimit = 0xF9, .vp_errgain = 0x18},
 	{.volt_nominal = 1350000, .sr_errminlimit = 0xF9, .vp_errgain = 0x18},
+        {.volt_nominal = 1375000, .sr_errminlimit = 0xF9, .vp_errgain = 0x18},//me change 2012.05.18
 };
 #endif
 
@@ -386,10 +389,10 @@ static struct omap_volt_data omap36xx_vdd1_volt_data[] = {
 	{.volt_nominal = 1350000, .sr_errminlimit = 0xFA, .vp_errgain = 0x27, .abb_type = FAST_OPP},
 };
 
-#if 1
+#if 1 //me change 2012.05.17
 /* VDD2 */
 static struct omap_volt_data omap34xx_vdd2_volt_data[] = {
-	{.volt_nominal = 975000, .sr_errminlimit = 0xF9, .vp_errgain = 0x20},
+	//{.volt_nominal = 975000, .sr_errminlimit = 0xF9, .vp_errgain = 0x20},
 	{.volt_nominal = 1200000, .sr_errminlimit = 0xF9, .vp_errgain = 0x20},
 	{.volt_nominal = 1200000, .sr_errminlimit = 0xF9, .vp_errgain = 0x20},
 };
@@ -398,7 +401,7 @@ static struct omap_volt_data omap34xx_vdd2_volt_data[] = {
 
 /* VDD2 */
 static struct omap_volt_data omap34xx_vdd2_volt_data[] = {
-	{.volt_nominal = 975000, .sr_errminlimit = 0xF4, .vp_errgain = 0x0C},
+	//{.volt_nominal = 975000, .sr_errminlimit = 0xF4, .vp_errgain = 0x0C},
 	{.volt_nominal = 1050000, .sr_errminlimit = 0xF4, .vp_errgain = 0x0C},
 	{.volt_nominal = 1150000, .sr_errminlimit = 0xF9, .vp_errgain = 0x18},
 };
@@ -439,7 +442,7 @@ static struct omap_volt_data omap44xx_vdd_core_volt_data[] = {
 	{.volt_nominal = 1100000, .sr_errminlimit = 0xF9, .vp_errgain = 0x16},
 };
 
-#if 1
+#if 1 //me change 2012.05.17
 /* OMAP 3430 MPU Core VDD dependency table */
 static struct omap_vdd_dep_volt omap34xx_vdd1_vdd2_data[] = {
 	{.main_vdd_volt = 1100000, .dep_vdd_volt = 1200000},
@@ -447,7 +450,8 @@ static struct omap_vdd_dep_volt omap34xx_vdd1_vdd2_data[] = {
 	{.main_vdd_volt = 1350000, .dep_vdd_volt = 1200000},
 	{.main_vdd_volt = 1375000, .dep_vdd_volt = 1200000},
 	{.main_vdd_volt = 1437500, .dep_vdd_volt = 1200000},
-	{.main_vdd_volt = 1450000, .dep_vdd_volt = 1200000},
+	//{.main_vdd_volt = 1450000, .dep_vdd_volt = 1200000},//me change 2012.05.20
+        {.main_vdd_volt = 1437500, .dep_vdd_volt = 1200000},
 	{.main_vdd_volt = 0, .dep_vdd_volt = 0},
 };
 
@@ -460,6 +464,7 @@ static struct omap_vdd_dep_volt omap34xx_vdd1_vdd2_data[] = {
 	{.main_vdd_volt = 1200000, .dep_vdd_volt = 1150000},
 	{.main_vdd_volt = 1270000, .dep_vdd_volt = 1150000},
 	{.main_vdd_volt = 1350000, .dep_vdd_volt = 1150000},
+        {.main_vdd_volt = 1375000, .dep_vdd_volt = 1150000},//me add 2012.05.18
 	{.main_vdd_volt = 0, .dep_vdd_volt = 0},
 };
 

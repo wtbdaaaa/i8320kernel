@@ -36,16 +36,22 @@
 #include <linux/interrupt.h>
 #include <linux/suspend.h>
 #include <linux/platform_device.h>
+// #include <asm/semaphore.h>
 #include <linux/semaphore.h>	// ryun
 #include <asm/mach-types.h>
 #include <linux/regulator/consumer.h>
+//#include <asm/arch/gpio.h>
+//#include <asm/arch/mux.h>
 #include <plat/gpio.h>	//ryun
 #include <plat/mux.h>	//ryun 
 #include <linux/delay.h>
 #include <asm/irq.h>
 #include <asm/mach/irq.h>
 #include <linux/firmware.h>
+//#include "dprintk.h"
+//#include "message.h"
 #include <linux/time.h>
+//#include <asm/arch/resource.h>
 #include "touchscreen.h"
 
 #include <linux/i2c/twl.h>	// ryun 20091125 
@@ -72,22 +78,6 @@
 #define SYNAPTICS_SLEEP_WAKEUP_ADDRESS		0x20
 
 #define	TOUCHSCREEN_SLEEP_WAKEUP_RETRY_COUNTER		3
-
-#define touch_mt //me add 2012.05.21
-#ifdef touch_mt
-#define MAX_PRESSURE                (1)
-#define MAX_TOOL_WIDTH      (15)
-#define MAX_TOUCH_MAJOR     (255)
-#define MAX_TOUCH_MINOR     (15)
-#endif
-
-//add touch boost funtion //me add 2012.04.14
-
-#define touch_boost
-#define VDD1_OPP5_FREQ         600000000
-#define VDD1_OPP4_FREQ         550000000
-#define VDD1_OPP3_FREQ         500000000
-#define VDD1_OPP1_FREQ         250000000
 
 //************************************************************************************
 // enum value value
@@ -117,9 +107,12 @@ enum EnTouchDriveStatus
 // global value
 //************************************************************************************
 
+//struct	semaphore	sem_touch_onoff;
+//struct	semaphore	sem_sleep_onoff;
+//struct	semaphore	sem_touch_handler;
 
 static struct touchscreen_t tsp;
-//static struct work_struct tsp_work; //me move
+static struct work_struct tsp_work;
 static struct workqueue_struct *tsp_wq;
 static int g_touch_onoff_status = EN_TOUCH_POWEROFF_MODE;
 static int g_sleep_onoff_status = EN_TOUCH_WAKEUP_MODE;
@@ -127,7 +120,7 @@ static int g_enable_touchscreen_handler = 0;	// fixed for i2c timeout error.
 static unsigned int g_version_read_addr = 0;
 //static unsigned short g_position_read_addr = 0;
 
-//extern int nowplus_enable_touch_pins(int enable);//me add
+extern int nowplus_enable_touch_pins(int enable);//me add
 //struct res_handle *tsp_rhandle = NULL;
 struct regulator *tsp_rhandle;//me add
 
@@ -145,16 +138,9 @@ struct touchscreen_t {
 	int irq;
 	int irq_type;
 	int irq_enabled;
-//	struct ts_device *dev;//me close
-	struct device *dev;//me change
+	struct ts_device *dev;
 	spinlock_t lock;
 	struct early_suspend	early_suspend;// ryun 20200107 for early suspend
-        struct work_struct tsp_work;//me move here
-#ifdef touch_boost //me add 2012.04.14
-	struct timer_list opp_set_timer;	// ryun 20100107 for touch boost
-	struct work_struct constraint_wq;
-	int opp_high;	// ryun 20100107 for touch boost	
-#endif
 };
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
@@ -166,10 +152,6 @@ void (*touchscreen_read)(struct work_struct *work) = NULL;
 
 static u16 syna_old_x_position = 0;
 static u16 syna_old_y_position = 0;
-static u16 syna_old_press = 0;//me add 2012.05.22
-#if 1 //def touch_mt
-static u16 syna_old_z1 = 0;
-#endif
 static u16 syna_old_x2_position = 0;
 static u16 syna_old_y2_position = 0;
 static int syna_old_finger_type = 0;
@@ -203,12 +185,25 @@ static int syna_old_old_finger_type=0;
 #endif
 
 //************************************************************************************
+// extern values
+//************************************************************************************
+#if 0
+// synaptics values
+/extern struct omap3430_pin_config touch_i2c_pins_gpio_scl_input[1];
+extern struct omap3430_pin_config touch_i2c_pins_gpio_scl_output[1];
+extern struct omap3430_pin_config touch_i2c_pins_gpio_sda_input[1];
+extern struct omap3430_pin_config touch_i2c_pins_gpio_sda_output[1];
+extern struct omap3430_pin_config touch_i2c_pins_gpio_int_input[1];
+extern struct omap3430_pin_config touch_i2c_pins_gpio_int_output[1];
+#endif
+//************************************************************************************
 // extern functions
 //************************************************************************************
 extern int i2c_tsp_sensor_init(void);
 extern int i2c_tsp_sensor_read(u8 reg, u8 *val, unsigned int len );
 extern int i2c_tsp_sensor_write_reg(u8 address, int data);
 
+//extern unsigned int SynaDoReflash();
 
 //************************************************************************************
 // function defines
@@ -222,13 +217,42 @@ void touchscreen_poweroff(void);
 void touchscreen_poweron(void);
 void set_touch_i2c_mode_init(void);
 void synaptics_touchscreen_start_triggering(void);
-#ifdef __TSP_I2C_ERROR_RECOVERY__
 void touch_ic_recovery();
-#endif
 #ifdef __SYNAPTICS_ALWAYS_ACTIVE_MODE__
 static int synaptics_set_drive_mode_bit(enum EnTouchDriveStatus drive_status);
 #endif
 
+
+#if 0
+//************************************************************************************
+// function bodys
+//************************************************************************************
+static void synaptics_set_GPIO_direction_out()
+{
+	// direction output
+	omap3430_pad_set_configs(touch_i2c_pins_gpio_sda_output, ARRAY_SIZE(touch_i2c_pins_gpio_sda_output));
+	omap3430_pad_set_configs(touch_i2c_pins_gpio_scl_output, ARRAY_SIZE(touch_i2c_pins_gpio_scl_output));
+	omap3430_pad_set_configs(touch_i2c_pins_gpio_int_output, ARRAY_SIZE(touch_i2c_pins_gpio_int_output));
+	udelay(50);
+	omap_set_gpio_direction(OMAP_GPIO_TOUCH_IRQ, GPIO_DIR_OUTPUT);
+	omap_set_gpio_direction(OMAP_GPIO_TSP_SCL, GPIO_DIR_OUTPUT);
+	omap_set_gpio_direction(OMAP_GPIO_TSP_SDA, GPIO_DIR_OUTPUT);
+	udelay(50);
+}
+
+static void synaptics_set_touch_direction_in(void)
+{
+	omap3430_pad_set_configs(touch_i2c_pins_gpio_sda_input, ARRAY_SIZE(touch_i2c_pins_gpio_sda_input));
+	omap3430_pad_set_configs(touch_i2c_pins_gpio_scl_input, ARRAY_SIZE(touch_i2c_pins_gpio_scl_input));
+	omap3430_pad_set_configs(touch_i2c_pins_gpio_int_input, ARRAY_SIZE(touch_i2c_pins_gpio_int_input));
+	udelay(50);
+	omap_set_gpio_direction(OMAP_GPIO_TOUCH_IRQ, GPIO_DIR_INPUT);
+	omap_set_gpio_direction(OMAP_GPIO_TSP_SCL, GPIO_DIR_INPUT);
+	omap_set_gpio_direction(OMAP_GPIO_TSP_SDA, GPIO_DIR_INPUT);
+	udelay(50);
+}
+
+#endif
 // never call irq handler
 void synaptics_touchscreen_start_triggering(void)
 {
@@ -354,14 +378,17 @@ static int touch_firmware_update(char* firmware_file_name)
 		return -1;
 	}
 
+	//down_interruptible(&sem_touch_handler);
 	if(g_enable_touchscreen_handler == 1)
 	{
 		g_enable_touchscreen_handler = 0;
 		free_irq(tsp.irq, &tsp);
 	}
+	//up(&sem_touch_handler);
 
 	issp_request_firmware(firmware_file_name);
 
+//	SynaDoReflash();
 	
 	g_FirmwareImageSize = 0;
 
@@ -373,32 +400,434 @@ static int touch_firmware_update(char* firmware_file_name)
 	return 0;
 }
 
-#ifdef touch_boost //me add 2012.04.14
+static ssize_t sysfs_issp_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	int fw_upgrade=0;
+	u8 data[2] = {0, };
+	char filename[50] = {'\0',};
+	int ret=0;
+#ifdef __CONFIG_FIRMWARE_AUTO_UPDATE__
+	u8 new_firmware_version = 0;
+	u8 current_firmware_version = 0;
+	int i;
 
-static void tsc_timer_out (unsigned long v)
+	new_firmware_version = 0x7;
+#endif
+
+	touchscreen_poweron();
+	udelay(10);
+
+	ret = sscanf(buf, "%d", &fw_upgrade);
+
+//////////////////////////// default touch firmware update.
+	if (fw_upgrade == 1)
 	{
-		schedule_work(&(tsp.constraint_wq));
-		return;
+		ret = touch_firmware_update("touch_c.img");
+	}
+//////////////////////////// touch firmware update given file name.
+	else if (fw_upgrade == 2)
+	{
+		sscanf(buf+ret, "%50s", filename);
+		if(filename[0] == (char)'\0')
+		{
+			printk("[ERROR] please input update file name.\n");
+			return count;
+		}else
+		{
+			printk("\nupdate file name is \"%s\"\n", filename);
+		}
+		
+		printk("start update touch firmware(%d) !!\n", fw_upgrade);
+		ret = touch_firmware_update(filename);
+	}
+//////////////////////////// auto touch firmware update checked current version.
+	else if (fw_upgrade == 3)
+	{
+#ifdef __CONFIG_FIRMWARE_AUTO_UPDATE__
+		int	flag_firmware_update = 0;
+
+		ret = i2c_tsp_sensor_read(g_version_read_addr, data, 2);
+		if(ret != 0)
+		{
+			printk("[TSP][ERROR] %s() i2c_tsp_sensor_read error : %d\n", __FUNCTION__ , ret);
+			flag_firmware_update = 1;
+			//return count; // have to firmware update, if touch ic s/w was broken
+		}
+
+		current_firmware_version = data[0];
+		printk("firmware S/W revision info = %d\n", current_firmware_version);
+
+		if(current_firmware_version == 0)
+		{
+			for(i=0; i<5; i++)
+			{
+				mdelay(400);
+				ret = i2c_tsp_sensor_read(g_version_read_addr, data, 2);
+				if(ret != 0)
+				{
+					printk("[TSP][ERROR] %s() i2c_tsp_sensor_read error : %d\n", __FUNCTION__ , ret);
+					flag_firmware_update = 1;
+					//return count; // have to firmware update, if touch ic s/w was broken
+				}
+				current_firmware_version = data[0];
+				if(current_firmware_version != 0)
+					break;
+			}
+
+			if(current_firmware_version == 0)
+			{
+				printk("[TSP][ERROR] firmware version read fail \n");
+				flag_firmware_update = 1;
+			}else
+			{
+				flag_firmware_update = 0;
+			}
+		}
+
+		if( (new_firmware_version > current_firmware_version) || (flag_firmware_update==1))
+		{			
+
+			ret = touch_firmware_update("touch_c.img");
+
+			printk("[TSP] latest touch firmware installed : %d\n", new_firmware_version);
+
+			//#ifdef	__SYNAPTICS_PRINT_SCREEN_FIRMWARE_UPDATE__	
+				//display_dbg_msg("touch firmware update finished !", KHB_DEFAULT_FONT_SIZE, KHB_DISCARD_PREV_MSG);
+			//#endif
+			
+		}
+		else
+			printk("[TSP] No excution touch firmware update. (%d, %d)\n", new_firmware_version, current_firmware_version);
+#endif
+	}
+//////////////////////////// touch firmware update by mmc.
+	else if (fw_upgrade == 4)
+	{
+		ret = touch_firmware_update("mmc_ptouch.img");
+	}
+//////////////////////////// Can't find matched command
+	else
+	{
+		ret = -1;
+		printk("[TSP][ERROR] wrong touch firmware update command\n");
 	}
 
-void tsc_remove_constraint_handler(struct work_struct *work)
-{
-		omap_pm_set_min_mpu_freq(tsp.dev, VDD1_OPP1_FREQ);
-                tsp.opp_high = 0;
-} 
-
+#ifdef CONFIG_LATE_HANDLER_ENABLE
+	// irq handler registration !!!!!!!!!!!!!!!!
+	touchscreen_poweron();
 #endif
+
+	if(ret < 0)
+	{
+		printk("[TSP][ERROR] %s() firmware update fail !!\n", __FUNCTION__);
+	}else
+	{
+		printk("[TSP] %s() firmware update success !!\n", __FUNCTION__);
+	}
+
+	return count;
+}
+
+static ssize_t sysfs_issp_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	int ret = 0;
+	u8 data[2] = {0,};
+//	unsigned char	fIsError;
+
+	ret = i2c_tsp_sensor_read(g_version_read_addr, data, 2);
+	if(ret != 0)
+	{
+		printk("[TSP][ERROR] %s() i2c_tsp_sensor_read error : %d\n", __FUNCTION__ , ret);
+		return sprintf(buf, "touch driver version : i2c read fail\n");
+	}
+
+	printk("touch driver version : %d.%d, firmware S/W Revision Info = %d\n", 
+		__TOUCH_DRIVER_MAJOR_VER__,__TOUCH_DRIVER_MINOR_VER__, data[0]);
+
+	return sprintf(buf, "%d", data[0]);
+}
+
+static DEVICE_ATTR(issp, S_IRUGO | S_IWUSR, sysfs_issp_show, sysfs_issp_store);
+
+#ifdef CONFIG_LATE_HANDLER_ENABLE
+static ssize_t sysfs_tsp_enable_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	int touch_enable;
+	sscanf(buf, "%d", &touch_enable);
+
+	if(touch_enable == 0) {
+		//down_interruptible(&sem_touch_handler);
+		if(g_enable_touchscreen_handler == 0)
+			printk("[TSP][WARNING] Touch handler already disabled.\n");
+		else
+		{
+			g_enable_touchscreen_handler = 0;
+			free_irq(tsp.irq, &tsp);
+			printk("[TSP] Touch handler disable !!\n");
+		}
+		//up(&sem_touch_handler);
+	}
+	else if(touch_enable == 1) {
+		//down_interruptible(&sem_touch_handler);
+		if(g_enable_touchscreen_handler == 1)
+			printk("[TSP][WARNING] Touch handler already enabled.\n");
+		else
+		{
+			g_enable_touchscreen_handler = 1;
+			if (request_irq(tsp.irq, touchscreen_handler, tsp.irq_type, TOUCHSCREEN_NAME, &tsp))	
+			{
+				printk("[TSP][ERROR] Could not allocate touchscreen IRQ!\n");
+				tsp.irq = -1;
+				input_free_device(tsp.inputdevice);
+				return count;
+			}
+			printk("[TSP] Touch handler already enable !!\n");
+		}
+		//up(&sem_touch_handler);
+	}
+	else
+		printk("[ERROR] wrong touch enable change command\n");
+	return count;
+}
+
+static ssize_t sysfs_tsp_enable_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	printk("[TSP] touch handler enable : %d\n", g_enable_touchscreen_handler);
+	return sprintf(buf, "%d", g_enable_touchscreen_handler);
+}
+
+static DEVICE_ATTR(tsp_enable, S_IRUGO | S_IWUSR, sysfs_tsp_enable_show, sysfs_tsp_enable_store);
+#else
+;//#error build-test
+#endif // CONFIG_LATE_HANDLER_ENABLE
+
+static ssize_t sysfs_touch_control_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	int touch_control_flag, ret=0;
+	unsigned char data[2] = {0,};
+	
+	sscanf(buf, "%d", &touch_control_flag);
+
+	if( touch_control_flag == 0) {
+		printk("[TSP] %s() enter sleep mode...\n", __FUNCTION__);
+		touchscreen_enter_sleep();
+	}
+	else if( touch_control_flag == 1) {
+		printk("[TSP] %s() wake-up mode...\n", __FUNCTION__);
+
+		touchscreen_wake_up();
+		
+		ret = i2c_tsp_sensor_read(g_version_read_addr, data, 2);
+		if(ret != 0)
+		{
+			printk("[TSP][ERROR] %s() i2c_tsp_sensor_read error : %d\n", __FUNCTION__ , ret);
+			return count;
+		}
+		//printk(DCM_INP, "[TSP] touch driver version : %d.%d, firmware S/W Revision Info = %x\n", __TOUCH_DRIVER_MAJOR_VER__,__TOUCH_DRIVER_MINOR_VER__, data[0]);
+
+		synaptics_touchscreen_start_triggering();
+	}
+	else if( touch_control_flag == 2) {
+		printk("[TSP] %s() power off mode...\n", __FUNCTION__);
+		touchscreen_poweroff();
+	}
+	else if( touch_control_flag == 3) {
+		printk("[TSP] %s() power on mode...\n", __FUNCTION__);
+		touchscreen_poweron();
+		ret = i2c_tsp_sensor_read(g_version_read_addr, data, 2);
+		if(ret != 0)
+		{
+			printk("[TSP][ERROR] %s() i2c_tsp_sensor_read error : %d\n", __FUNCTION__ , ret);
+			touch_ic_recovery();
+			return count;
+		}
+		printk( "[TSP] touch driver version : %d.%d, firmware S/W Revision Info = %x\n", 
+			__TOUCH_DRIVER_MAJOR_VER__,__TOUCH_DRIVER_MINOR_VER__, data[0]);
+
+		synaptics_touchscreen_start_triggering();
+	}
+	else
+		printk("[TSP][ERROR] wrong touch control command\n");
+	return count;
+}
+
+static ssize_t sysfs_touch_control_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return 0;
+}
+
+static DEVICE_ATTR(touchcontrol, S_IRUGO | S_IWUSR, sysfs_touch_control_show, sysfs_touch_control_store);
+
+static int find_next_string_in_buf(const char *buf, size_t count)
+{
+	int ii=0;
+	for(ii=0 ; ii<count ; ii++)
+	{
+		if(buf[ii] == ' ')
+			return ii;
+	}
+	return -1;
+}
+
+static ssize_t sysfs_get_register_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	u8 *pData;
+	int start_address = 0, end_address = 0, ret = 0, cnt = 0;
+	unsigned int read_size;
+
+	if((ret = sscanf(buf, "%x", &start_address)) <= 0)
+	{
+		printk("[TSP][ERROR] %s() input start address and then end address !!\n", __FUNCTION__);
+		return count;
+	}
+	
+	cnt = find_next_string_in_buf(buf, count);
+	if(cnt > 0)
+	{
+		ret = sscanf(buf+cnt, "%x", &end_address);
+		if(ret <= 0 || end_address == 0 || end_address < start_address)
+		{
+			read_size = 1;
+		}else
+		{
+			read_size = end_address - start_address + 1;
+		}
+	}else{
+		read_size = 1;
+	}
+		
+	
+	pData = kmalloc(read_size, GFP_KERNEL);
+	ret = i2c_tsp_sensor_read((u8)start_address, pData, read_size);
+	if(ret != 0)
+	{
+		printk("[TSP][ERROR] %s() i2c_tsp_sensor_read error : %d\n", __FUNCTION__ , ret);
+		return count;
+	}
+		if(read_size == 1)
+		printk("[TSP] address : 0x%x, value: 0x%x\n", start_address, pData[0]);
+	else
+	{
+		printk("[TSP] read touch ic register - start address : 0x%x -- end address : 0x%x\n", start_address, end_address);
+		printk("======================================================================\n");
+		for(cnt=0 ; cnt < read_size ; cnt++)
+		{
+			printk("0x%02x ", pData[cnt]);
+			if((cnt+1)%10 == 0 && cnt != 0)
+				printk("\n");
+		}
+		printk("\n======================================================================\n");
+	}
+	kfree(pData);
+	return count;
+}
+
+static ssize_t sysfs_get_register_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+
+	printk("[TSP] synaptics version address : 0x%x\n", g_version_read_addr);
+	printk("[TSP] synaptics read address : 0x%x\n", g_synaptics_read_addr);
+	printk("[TSP] USAGE : echo [start address] {end address} > get_register\n");
+
+	return 0;
+}
+
+static DEVICE_ATTR(get_register, S_IRUGO | S_IWUSR, sysfs_get_register_show, sysfs_get_register_store);
+
+static ssize_t sysfs_set_register_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	int address = 0;
+	int data = 0, ret = 0, cnt=0;
+
+	if((ret = sscanf(buf, "%x", &address)) <= 0)
+	{
+		printk("[TSP][ERROR] %s() input start address and then end address !!\n", __FUNCTION__);
+		return count;
+	}
+
+	cnt = find_next_string_in_buf(buf, count);
+	if(cnt < 0)
+	{
+		printk("[TSP][ERROR] %s() input start address and then end address !!\n", __FUNCTION__);
+		return count;
+	}
+	
+	if((ret = sscanf(buf+cnt, "%x", &data)) <= 0)
+	{
+		printk("[TSP][ERROR] %s() input start address and then end address !!\n", __FUNCTION__);
+		return count;
+	}
+	printk("[TSP] try to write : address 0x%x, write value : 0x%x\n", address, data);
+
+	if((ret = i2c_tsp_sensor_write_reg((u8)address, data)) != 0)
+	{
+		printk("[TSP][ERROR] %s() i2c_tsp_sensor_write_reg error : %d\n", __FUNCTION__ , ret);
+		return count;
+	}
+
+	data = 0;
+	
+	ret = i2c_tsp_sensor_read((u8)address, (u8*)&data, 1);
+	if(ret != 0)
+	{
+		printk("[TSP][ERROR] %s() i2c_tsp_sensor_read error : %d\n", __FUNCTION__ , ret);
+		return count;
+	}
+
+	printk("[TSP] read again : address 0x%x, write value : 0x%x\n", address, data);
+
+	return count;
+}
+
+static ssize_t sysfs_set_register_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	printk("[TSP] USAGE : echo [address] [value] > set_register\n");
+	return 0;
+}
+
+static DEVICE_ATTR(set_register, S_IRUGO | S_IWUSR, sysfs_set_register_show, sysfs_set_register_store);
+
+#ifdef __SYNAPTICS_UNSTABLE_TSP_RECOVERY__
+static ssize_t sysfs_rf_recovery_behavior_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	int status;
+
+	sscanf(buf, "%d", &status);
+
+	if(status == 0) {
+		g_rf_recovery_behavior_status = 0;
+		printk("[TSP] synaptics rf recovery disable\n");
+	}
+	else if(status == 1) {
+		g_rf_recovery_behavior_status = 1;
+		printk("[TSP] synaptics rf recovery by rezero\n");
+	}
+	else if(status == 2) {
+		g_rf_recovery_behavior_status = 2;
+		printk("[TSP] synaptics rf recovery by reset\n");
+	}
+	else {
+		printk("[TSP] wrong command of touch debug\n");
+	}
+	return count;
+}
+
+static ssize_t sysfs_rf_recovery_behavior_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	printk("g_rf_recovery_behavior_status = %d\n", g_rf_recovery_behavior_status);
+	return sprintf(buf, "%d\n", g_rf_recovery_behavior_status);
+}
+
+static DEVICE_ATTR(rf_recovery_behavior, S_IRUGO | S_IWUSR, sysfs_rf_recovery_behavior_show, sysfs_rf_recovery_behavior_store);
+#endif
+
 #ifndef __CONFIG_CYPRESS_USE_RELEASE_BIT__
 static void tsp_timer_handler(unsigned long data)
-{         
-        #ifdef touch_mt
-        input_mt_sync(tsp.inputdevice);
-        input_sync(tsp.inputdevice);
-        #else
+{
 	input_report_key(tsp.inputdevice, BTN_TOUCH, DEFAULT_PRESSURE_UP);//me add
 	input_report_abs(tsp.inputdevice, ABS_PRESSURE, DEFAULT_PRESSURE_UP);
 	input_sync(tsp.inputdevice);
-        #endif
+
 	//printk( "[TSP] timer : up\n");
 }
 #endif
@@ -412,14 +841,9 @@ static void tsp_rf_noise_recovery_timer_handler(unsigned long data)
 			&& (g_last_rf_noise_recovery_time.tv_usec  > g_current_timestamp.tv_usec))
 	)
 	{
-                #ifdef touch_mt
-                 input_mt_sync(tsp.inputdevice);
-                 input_sync(tsp.inputdevice);
-                #else
 		input_report_key(tsp.inputdevice, BTN_TOUCH, DEFAULT_PRESSURE_UP);//me add
 		input_report_abs(tsp.inputdevice, ABS_PRESSURE, DEFAULT_PRESSURE_UP);
 		input_sync(tsp.inputdevice);
-                #endif
 		printk("[TSP][WARNING] == recovery timer : up\n");
 	}
 
@@ -529,10 +953,10 @@ static int synaptics_write_sleep_bit(enum EnTouchSleepStatus sleep_status)
 void touchscreen_enter_sleep(void)
 {
 	int ret=0, ii=0;
-
+	//down_interruptible(&sem_sleep_onoff);
 	if(g_sleep_onoff_status == EN_TOUCH_WAKEUP_MODE)
 	{
-		
+		//down_interruptible(&sem_touch_handler);
 		if(g_enable_touchscreen_handler == 1)
 		{
 			g_enable_touchscreen_handler = 0;
@@ -540,7 +964,7 @@ void touchscreen_enter_sleep(void)
 		}else{
 			printk( "[TSP][WARNING] %s() handler is already disabled \n", __FUNCTION__);
 		}
-		
+		//up(&sem_touch_handler);
 
 		g_sleep_onoff_status = EN_TOUCH_SLEEP_MODE;
 
@@ -564,11 +988,11 @@ void touchscreen_enter_sleep(void)
 	}else{
 		printk( "[TSP][WARNING] %s() call but g_sleep_onoff_status = %d !\n", __FUNCTION__, g_sleep_onoff_status);
 	}
-	
+	//up(&sem_sleep_onoff);
 	return;
 	
 error_return:
-	
+	//up(&sem_sleep_onoff);
 	return;
 	
 }
@@ -576,10 +1000,10 @@ error_return:
 void touchscreen_poweroff(void)
 {
 	int ret = 0;
-	
+	//down_interruptible(&sem_touch_onoff);
 	if(g_touch_onoff_status == EN_TOUCH_POWERON_MODE)
 	{
-		
+		//down_interruptible(&sem_touch_handler);
 		if(g_enable_touchscreen_handler == 1)
 		{
 			g_enable_touchscreen_handler = 0;
@@ -587,7 +1011,7 @@ void touchscreen_poweroff(void)
 		}else{
 			printk( "[TSP][WARNING] %s() handler is already disabled \n", __FUNCTION__);
 		}
-		
+		//up(&sem_touch_handler);
 
 		g_touch_onoff_status = EN_TOUCH_POWEROFF_MODE;
 #if 0
@@ -604,17 +1028,29 @@ void touchscreen_poweroff(void)
 	}else{
 		printk("[TSP] %s() call but g_touch_onoff_status = %d !\n", __FUNCTION__, g_touch_onoff_status);
 	}
-	
+	//up(&sem_touch_onoff);
 	
 	return;
 
 error_return:
-	
+	//up(&sem_sleep_onoff);
 	return;
 
 }
 
+#if 0
+struct omap3430_pin_config touch_i2c_gpio_init[] = {
+	OMAP3430_PAD_CFG("TOUCH INT",		OMAP3430_PAD_TOUCH_INT, PAD_MODE4, PAD_INPUT_PU, PAD_OFF_PD, PAD_WAKEUP_NA),
+	OMAP3430_PAD_CFG("TOUCH I2C SCL", OMAP3430_PAD_I2C_TOUCH_SCL, PAD_MODE0, PAD_INPUT_PU, PAD_OFF_PU, PAD_WAKEUP_NA),
+	OMAP3430_PAD_CFG("TOUCH I2C SDA", OMAP3430_PAD_I2C_TOUCH_SDA, PAD_MODE0, PAD_INPUT_PU, PAD_OFF_PU, PAD_WAKEUP_NA),
+};
 
+struct omap3430_pin_config synaptics_touch_i2c_gpio_init[] = {
+	OMAP3430_PAD_CFG("TOUCH INT",		OMAP3430_PAD_TOUCH_INT, PAD_MODE4, PAD_INPUT_PU, PAD_OFF_INPUT, PAD_WAKEUP_NA),
+	OMAP3430_PAD_CFG("TOUCH I2C SCL", OMAP3430_PAD_I2C_TOUCH_SCL, PAD_MODE0, PAD_INPUT_PU, PAD_OFF_PU, PAD_WAKEUP_NA),
+	OMAP3430_PAD_CFG("TOUCH I2C SDA", OMAP3430_PAD_I2C_TOUCH_SDA, PAD_MODE0, PAD_INPUT_PU, PAD_OFF_PU, PAD_WAKEUP_NA),
+};
+#endif
 
 void set_touch_i2c_mode_init(void)
 {
@@ -630,7 +1066,7 @@ void touchscreen_wake_up(void)
 	set_touch_i2c_mode_init();
 
 	udelay(100);
-	
+	//down_interruptible(&sem_sleep_onoff);
 	if(g_sleep_onoff_status == EN_TOUCH_SLEEP_MODE)
 	{
 
@@ -646,7 +1082,7 @@ void touchscreen_wake_up(void)
 		if(ii == TOUCHSCREEN_SLEEP_WAKEUP_RETRY_COUNTER)
 			goto error_return;
 		synaptics_touchscreen_start_triggering();
-		
+		//down_interruptible(&sem_touch_handler);
 		if(g_enable_touchscreen_handler == 0)
 		{
 			g_enable_touchscreen_handler = 1;
@@ -661,22 +1097,23 @@ void touchscreen_wake_up(void)
 		}else{
 			printk( "[TSP][WARNING] %s() handler is already enabled \n", __FUNCTION__);
 		}
-		
+		//up(&sem_touch_handler);
 		
 		g_sleep_onoff_status = EN_TOUCH_WAKEUP_MODE;
 		printk("[TSP] touchscreen_wake_up() success!!\n");
 	}else{
 		printk( "[TSP][WARNING] %s() call but g_sleep_onoff_status = %d !\n", __FUNCTION__, g_sleep_onoff_status);
 	}
-	
+	//up(&sem_sleep_onoff);
 	return;
 
 error_return:
-	
+	//up(&sem_sleep_onoff);
 	return;
 
 error_return_2:
-	
+	//up(&sem_touch_handler);
+	//up(&sem_sleep_onoff);
 	return;
 }
 
@@ -688,7 +1125,7 @@ void touchscreen_poweron(void)
 
 	udelay(100);
 
-	
+	//down_interruptible(&sem_touch_onoff);
 	if(g_touch_onoff_status == EN_TOUCH_POWEROFF_MODE)
 	{
 		printk("[TSP] synaptics touchscreen power on\n");
@@ -720,6 +1157,7 @@ void touchscreen_poweron(void)
 
 		synaptics_touchscreen_start_triggering();
 
+		//down_interruptible(&sem_touch_handler);
 		if(g_enable_touchscreen_handler == 0)
 		{
 			g_enable_touchscreen_handler = 1;
@@ -734,20 +1172,24 @@ void touchscreen_poweron(void)
 		}else{
 			printk( "[TSP][WARNING] %s() handler is already enabled \n", __FUNCTION__);
 		}
-				
+		//up(&sem_touch_handler);
+		
 		g_touch_onoff_status = EN_TOUCH_POWERON_MODE;
 		g_sleep_onoff_status = EN_TOUCH_WAKEUP_MODE;
 	}else{
 		printk("[TSP] %s() call but g_touch_onoff_status = %d !\n", __FUNCTION__, g_touch_onoff_status);
 	}
-	
+	//up(&sem_touch_onoff);
+
 	return;
 
 error_return:
+	//up(&sem_touch_onoff);
 	return;
 
 error_return_2:
-	
+	//up(&sem_touch_handler);
+	//up(&sem_touch_onoff);
 	return;
 
 }
@@ -800,155 +1242,6 @@ static void touch_RF_nosie_recovery(int wx1, int wy1, int wx2, int wy2, int fing
 * have to call "kfree()", If you want to "return" suddenly.
 *
 *******************************************************/
-#if 1 //def touch_mt
-void synaptics_touchscreen_read(struct work_struct *work)
-{
-	int ret = 0;
-	u8 *data;
-	u16 x_position = 0;
-	u16 y_position = 0;
-	//u16 x2_position = 0;
-	//u16 y2_position = 0;
-	int press = 0;
-	//int press2 = 0;
-	int finger_type = 0;
-#ifdef touch_boost//me add 2012.04.14//	added for touchscreen boost,samsung customisation
-        struct touchscreen_t *ts = container_of(work,
-					struct touchscreen_t, tsp_work);
-	
-		if (timer_pending(&ts->opp_set_timer))
-			del_timer(&ts->opp_set_timer);
-		omap_pm_set_min_mpu_freq(ts->dev, VDD1_OPP3_FREQ);
-		mod_timer(&ts->opp_set_timer, jiffies + (1000 * HZ) / 1000);
-
-#endif
-#ifdef __CONFIG_SYNAPTICS_MULTI_TOUCH__
-	int muilti_touch_id = 0;
-#endif
-#ifdef __SYNAPTICS_UNSTABLE_TSP_RECOVERY__
-	u8 WX1 = 0;
-	u8 WY1 = 0;
-	//u8 WX2 = 0;
-	//u8 WY2 = 0;
-#ifdef touch_mt
-        u8 z1 = 0;//me add 2012.05.21
-	//u8 z2 = 0;//me add 2012.05.21
-#endif
-#endif
-	do_gettimeofday(&g_current_timestamp);
-//	if (touch_debug_status) {
-//		printk("[TSP][DEBUG]read start time : %ld sec, %6ld microsec\n", g_current_timestamp.tv_sec, g_current_timestamp.tv_usec);
-//	}
-
-	data = kmalloc(g_synaptics_read_cnt, GFP_KERNEL);
-	if(data == NULL)
-	{
-		printk("[TSP][ERROR] %s() kmalloc fail\n", __FUNCTION__ );
-		kfree(data);
-                
-		return;
-	}
-
-	ret = i2c_tsp_sensor_read(g_synaptics_read_addr, data, g_synaptics_read_cnt);
-	if(ret != 0)
-	{
-		printk("[TSP][ERROR] %s() i2c_tsp_sensor_read error : %d\n", __FUNCTION__ , ret);
-		kfree(data);
-                
-		return;
-	}
-
-	press = (data[0x15-g_synaptics_read_addr] & 0x03);
-	x_position = data[0x16-g_synaptics_read_addr];
-	x_position = (x_position << 4) | (data[0x18-g_synaptics_read_addr] & 0x0f);
-	y_position = data[0x17-g_synaptics_read_addr];
-	y_position = (y_position << 4) | (data[0x18-g_synaptics_read_addr]  >> 4);
-	//press2 = ((data[0x15-g_synaptics_read_addr] & 0x0C)>>2);
-	//x2_position = data[0x1B-g_synaptics_read_addr];
-	//x2_position = (x2_position << 4) | (data[0x1D-g_synaptics_read_addr] & 0x0f);
-	//y2_position = data[0x1C-g_synaptics_read_addr];
-	//y2_position = (y2_position << 4) | (data[0x1D-g_synaptics_read_addr]  >> 4);
-	
-#ifdef __SYNAPTICS_UNSTABLE_TSP_RECOVERY__
-	WX1 = (data[0x19-g_synaptics_read_addr] & 0x0F);
-	WY1 = (data[0x19-g_synaptics_read_addr] >> 4);
-#ifdef touch_mt
-        z1 = data[0x1A-g_synaptics_read_addr];//me add 2012.05.21
-#endif
-	//WX2 = (data[0x1E - g_synaptics_read_addr] & 0x0F);
-	//WY2 = (data[0x1E - g_synaptics_read_addr] >> 4);
-#ifdef touch_mt
-        //z2 = data[0x1F-g_synaptics_read_addr];//me add 2012.05.21
-#endif
-
-#endif
-#ifdef touch_mt
-if((x_position == syna_old_x_position) && (y_position == syna_old_y_position)&& (z1 == syna_old_z1)&& (press == syna_old_press)) 
-                               {
-					kfree(data);
-                                                                  
-					return;
-				}
-                syna_old_x_position = x_position;
-	 	syna_old_y_position = y_position;
-                syna_old_press = press;
-                syna_old_z1 = z1;
-
-
-
-                                input_report_abs(tsp.inputdevice, ABS_MT_TOUCH_MAJOR,z1);
-			        input_report_abs(tsp.inputdevice, ABS_MT_WIDTH_MAJOR,15);
-                                input_report_abs(tsp.inputdevice, ABS_MT_POSITION_X, x_position);
-				input_report_abs(tsp.inputdevice, ABS_MT_POSITION_Y, y_position);
-                                input_mt_sync(tsp.inputdevice);
-                                input_sync(tsp.inputdevice);
-
-#else
-if (press == 1 ) {
-if((x_position == syna_old_x_position) && (y_position == syna_old_y_position)&& (press == syna_old_press)) 
-                               {
-					kfree(data);
-                                                                  
-					return;
-				}
-                syna_old_x_position = x_position;
-	 	syna_old_y_position = y_position;
-                syna_old_press = press;
-                input_report_abs(tsp.inputdevice, ABS_X, x_position);
-	        input_report_abs(tsp.inputdevice, ABS_Y, y_position);
-                input_report_key(tsp.inputdevice, BTN_TOUCH, DEFAULT_PRESSURE_DOWN);//me add
-                input_report_abs(tsp.inputdevice, ABS_PRESSURE, DEFAULT_PRESSURE_DOWN);
-	        input_sync(tsp.inputdevice);
-}else if (press == 0) {
-if((x_position == syna_old_x_position) && (y_position == syna_old_y_position)&& (press == syna_old_press)) 
-                               {
-					kfree(data);
-                                                                  
-					return;
-				}
-                syna_old_x_position = x_position;
-	 	syna_old_y_position = y_position;
-                syna_old_press = press;
-                input_report_abs(tsp.inputdevice, ABS_X, x_position);
-	        input_report_abs(tsp.inputdevice, ABS_Y, y_position);
-                input_report_key(tsp.inputdevice, BTN_TOUCH, DEFAULT_PRESSURE_UP);//me add
-		input_report_abs(tsp.inputdevice, ABS_PRESSURE, DEFAULT_PRESSURE_UP);
-		input_sync(tsp.inputdevice);
-
-}
-#endif
- 
-#ifdef touch_mt
-printk( "[TSP][UP][M->S]type:%d, x=%d, y=%d ,z1=%d ,maxpressure=%d\n", press, x_position, y_position, z1 ,max(WX1 , WY1));
-#else
-printk( "[TSP][UP][M->S]type:%d, x=%d, y=%d\n", press, x_position, y_position);
-#endif
- //printk( "[TSP][UP][M->S]type:%d, x2=%d, y2=%d ,z2=%d ,maxpressure=%d\n", press2, x2_position, y2_position, z2 ,max(WX2 , WY2));       
-	kfree(data);
-}
-
-#else
-
 void synaptics_touchscreen_read(struct work_struct *work)
 {
 	int ret = 0;
@@ -960,16 +1253,6 @@ void synaptics_touchscreen_read(struct work_struct *work)
 	int press = 0;
 	int press2 = 0;
 	int finger_type = 0;
-#ifdef touch_boost//me add 2012.04.14//	added for touchscreen boost,samsung customisation
-        struct touchscreen_t *ts = container_of(work,
-					struct touchscreen_t, tsp_work);
-	
-		if (timer_pending(&ts->opp_set_timer))
-			del_timer(&ts->opp_set_timer);
-		omap_pm_set_min_mpu_freq(ts->dev, VDD1_OPP3_FREQ);
-		mod_timer(&ts->opp_set_timer, jiffies + (1000 * HZ) / 1000);
-
-#endif
 #ifdef __CONFIG_SYNAPTICS_MULTI_TOUCH__
 	int muilti_touch_id = 0;
 #endif
@@ -978,10 +1261,6 @@ void synaptics_touchscreen_read(struct work_struct *work)
 	u8 WY1 = 0;
 	u8 WX2 = 0;
 	u8 WY2 = 0;
-#ifdef touch_mt
-        u8 z1 = 0;//me add 2012.05.21
-	u8 z2 = 0;//me add 2012.05.21
-#endif
 #endif
 	do_gettimeofday(&g_current_timestamp);
 //	if (touch_debug_status) {
@@ -993,7 +1272,6 @@ void synaptics_touchscreen_read(struct work_struct *work)
 	{
 		printk("[TSP][ERROR] %s() kmalloc fail\n", __FUNCTION__ );
 		kfree(data);
-                
 		return;
 	}
 
@@ -1002,7 +1280,6 @@ void synaptics_touchscreen_read(struct work_struct *work)
 	{
 		printk("[TSP][ERROR] %s() i2c_tsp_sensor_read error : %d\n", __FUNCTION__ , ret);
 		kfree(data);
-                
 		return;
 	}
 
@@ -1045,15 +1322,8 @@ void synaptics_touchscreen_read(struct work_struct *work)
 #ifdef __SYNAPTICS_UNSTABLE_TSP_RECOVERY__
 	WX1 = (data[0x19-g_synaptics_read_addr] & 0x0F);
 	WY1 = (data[0x19-g_synaptics_read_addr] >> 4);
-#ifdef touch_mt
-        z1 = data[0x1A-g_synaptics_read_addr];//me add 2012.05.21
-#endif
 	WX2 = (data[0x1E - g_synaptics_read_addr] & 0x0F);
 	WY2 = (data[0x1E - g_synaptics_read_addr] >> 4);
-#ifdef touch_mt
-        z2 = data[0x1F-g_synaptics_read_addr];//me add 2012.05.21
-#endif
-
 #endif
 
 /////////////////////////////////////////////	 press event processing start   //////////////////////////////////////////////////
@@ -1067,8 +1337,6 @@ void synaptics_touchscreen_read(struct work_struct *work)
 			{
 				if((x2_position == syna_old_x2_position) && (y2_position == syna_old_y2_position)) {
 					kfree(data);
-                                        //
-	                                
 					return;
 				}
 			}
@@ -1109,28 +1377,18 @@ void synaptics_touchscreen_read(struct work_struct *work)
 #ifdef __MAKE_MISSED_UP_EVENT__
 			if(finger_type == 1) {
 				if(syna_old_finger_type == 2) {
-                                        #ifdef touch_mt
-                                        input_mt_sync(tsp.inputdevice);
-                                        input_sync(tsp.inputdevice);
-                                        #else
                                         input_report_key(tsp.inputdevice, BTN_TOUCH, DEFAULT_PRESSURE_UP);//me add
 					input_report_abs(tsp.inputdevice, ABS_PRESSURE, DEFAULT_PRESSURE_UP);
 					input_sync(tsp.inputdevice);
 					//printk( "[TSP][UP][F]type:%d, x=%d, y=%d\n", finger_type, x2_position, y2_position);
-                                        #endif
 				}
 			}
 			else if(finger_type == 2) {
 				if(syna_old_finger_type == 1) {
-                                         #ifdef touch_mt
-                                        input_mt_sync(tsp.inputdevice);
-                                        input_sync(tsp.inputdevice);
-                                        #else
 					input_report_key(tsp.inputdevice, BTN_TOUCH, DEFAULT_PRESSURE_UP);//me add
 					input_report_abs(tsp.inputdevice, ABS_PRESSURE, DEFAULT_PRESSURE_UP);
 					input_sync(tsp.inputdevice);
 					//printk( "[TSP][UP][F]type:%d, x=%d, y=%d\n", finger_type, x_position, y_position);
-                                        #endif
 				}
 			}
 #endif
@@ -1138,42 +1396,22 @@ void synaptics_touchscreen_read(struct work_struct *work)
 			if((WX1 > 0xa) || (WY1 > 0xa) || (WX2 > 0xa) || (WY2 > 0xa)) {
 				touch_RF_nosie_recovery(WX1, WY1, WX2, WY2, finger_type);
 				if(g_rf_recovery_behavior_status !=0) {
-					kfree(data); 
-                                        
+					kfree(data);
 					return;
 				}
 			}
 #endif	// __SYNAPTICS_UNSTABLE_TSP_RECOVERY__
 			if(finger_switched == 0) {
-                                 #ifdef touch_mt
-                                input_report_abs(tsp.inputdevice, ABS_MT_TOUCH_MAJOR,z1);
-			        input_report_abs(tsp.inputdevice, ABS_MT_WIDTH_MAJOR,max(WX1 , WY1));
-                                input_report_abs(tsp.inputdevice, ABS_MT_POSITION_X, x_position);
-				input_report_abs(tsp.inputdevice, ABS_MT_POSITION_Y, y_position);
-                                #else
 				input_report_abs(tsp.inputdevice, ABS_X, x_position);
 				input_report_abs(tsp.inputdevice, ABS_Y, y_position);
-                                #endif
 			}
 			else {
-                                 #ifdef touch_mt
-                                input_report_abs(tsp.inputdevice, ABS_MT_TOUCH_MAJOR,z2);
-			        input_report_abs(tsp.inputdevice, ABS_MT_WIDTH_MAJOR,max(WX2 , WY2));
-                                input_report_abs(tsp.inputdevice, ABS_MT_POSITION_X, x2_position);
-				input_report_abs(tsp.inputdevice, ABS_MT_POSITION_Y, y2_position);
-                                #else
 				input_report_abs(tsp.inputdevice, ABS_X, x2_position);
 				input_report_abs(tsp.inputdevice, ABS_Y, y2_position);
-                                #endif
 			}
-                                #ifdef touch_mt
-                                 input_mt_sync(tsp.inputdevice);
-                                 input_sync(tsp.inputdevice);
-                                 #else
-			         input_report_key(tsp.inputdevice, BTN_TOUCH, DEFAULT_PRESSURE_DOWN);//me add
-                                 input_report_abs(tsp.inputdevice, ABS_PRESSURE, DEFAULT_PRESSURE_DOWN);
-			         input_sync(tsp.inputdevice);
-                                 #endif
+			input_report_key(tsp.inputdevice, BTN_TOUCH, DEFAULT_PRESSURE_DOWN);//me add
+                        input_report_abs(tsp.inputdevice, ABS_PRESSURE, DEFAULT_PRESSURE_DOWN);
+			input_sync(tsp.inputdevice);
 #if 0 //me change
 			if(finger_switched == 0)
 				//printk( "[TSP][DOWN]type:%d, x=%d, y=%d\n", finger_type, x_position, y_position);
@@ -1187,7 +1425,6 @@ void synaptics_touchscreen_read(struct work_struct *work)
 			touch_RF_nosie_recovery(WX1, WY1, WX2, WY2, finger_type);
 			if(g_rf_recovery_behavior_status !=0) {
 				kfree(data);
-                                
 				return;
 			}
 #endif	// __SYNAPTICS_UNSTABLE_TSP_RECOVERY__
@@ -1200,14 +1437,9 @@ void synaptics_touchscreen_read(struct work_struct *work)
 	else if(finger_type == 0)
 	{
 		if((syna_old_finger_type == 1) || (syna_old_finger_type == 2) || (syna_old_finger_type == 5) || (syna_old_finger_type == 6)) {
-                                      #ifdef touch_mt
-                                       input_mt_sync(tsp.inputdevice);
-                                       input_sync(tsp.inputdevice);
-                                      #else
-			               input_report_key(tsp.inputdevice, BTN_TOUCH, DEFAULT_PRESSURE_UP);//me add
+			input_report_key(tsp.inputdevice, BTN_TOUCH, DEFAULT_PRESSURE_UP);//me add
 					input_report_abs(tsp.inputdevice, ABS_PRESSURE, DEFAULT_PRESSURE_UP);
-			                input_sync(tsp.inputdevice);
-                                       #endif
+			input_sync(tsp.inputdevice);
 #if 0 //me change			
                        if(finger_switched == 0)
 				printk( "[TSP][UP]type:%d, x=%d, y=%d\n", finger_type, x_position, y_position);
@@ -1219,7 +1451,6 @@ void synaptics_touchscreen_read(struct work_struct *work)
 				touch_RF_nosie_recovery(WX1, WY1, WX2, WY2, finger_type);
 				if(g_rf_recovery_behavior_status !=0) {
 					kfree(data);
-                                        
 					return;
 				}
 			}
@@ -1227,14 +1458,9 @@ void synaptics_touchscreen_read(struct work_struct *work)
 		}
 		else if((syna_old_finger_type == 3) || (syna_old_finger_type == 4)) {
 #ifndef __SYNA_MULTI_TOUCH_SUPPORT__
-                         #ifdef touch_mt
-                                        input_mt_sync(tsp.inputdevice);
-                                        input_sync(tsp.inputdevice);
-                                        #else
 			input_report_key(tsp.inputdevice, BTN_TOUCH, DEFAULT_PRESSURE_UP);//me add
 					input_report_abs(tsp.inputdevice, ABS_PRESSURE, DEFAULT_PRESSURE_UP);
 			input_sync(tsp.inputdevice);
-                        #endif
 			//printk( "[TSP][UP][WARNING]type:%d, Multi touch is not supported. But send release event.\n", finger_type);
 #else //__SYNA_MULTI_TOUCH_SUPPORT__
 			//making two release event(2finger => release at the sametime)
@@ -1275,7 +1501,6 @@ void synaptics_touchscreen_read(struct work_struct *work)
 				touch_RF_nosie_recovery(WX1, WY1, WX2, WY2, finger_type);
 				if(g_rf_recovery_behavior_status !=0) {
 					kfree(data);
-                                        
 					return;
 				}
 			}
@@ -1297,7 +1522,6 @@ void synaptics_touchscreen_read(struct work_struct *work)
 			touch_RF_nosie_recovery(WX1, WY1, WX2, WY2, finger_type);
 			if(g_rf_recovery_behavior_status !=0) {
 				kfree(data);
-                                
 				return;
 			}
 		}
@@ -1311,23 +1535,23 @@ void synaptics_touchscreen_read(struct work_struct *work)
 		if((syna_old_finger_type != 3) && (syna_old_finger_type != 4))
 			syna_old_old_finger_type = finger_type;
 #endif
-        //
-	
 	kfree(data);
 }
-#endif
 
 static irqreturn_t touchscreen_handler(int irq, void *dev_id)
 {
-printk("[TSP] touchscreen_handler----------- !! \n");
+//printk("[TSP] touchscreen_handler----------- !! \n");
 #ifdef __TSP_I2C_ERROR_RECOVERY__
 	if(g_touch_irq_handler_count < MAX_HANDLER_COUNT)
 		g_touch_irq_handler_count++;
 	else
 		g_touch_irq_handler_count = 0;
 #endif
-	
-	queue_work(tsp_wq, &tsp.tsp_work);
+
+//	cancel_delayed_work(&tsp_up_work);	 
+	//schedule_work(&tsp_work);
+	queue_work(tsp_wq, &tsp_work);
+//	schedule_delayed_work(&tsp_up_work, msecs_to_jiffies(30));
 
 #ifndef __CONFIG_CYPRESS_USE_RELEASE_BIT__
 	del_timer(&tsp_timer);
@@ -1366,10 +1590,12 @@ static int __init touchscreen_probe(struct platform_device *pdev)
 	g_synaptics_read_addr = 0x13;
 	g_synaptics_read_cnt = 13;
 	g_synaptics_device_control_addr = 0x23;
-
+	
+	//sema_init(&sem_touch_onoff, 1);
+	//sema_init(&sem_sleep_onoff, 1);
+	//sema_init(&sem_touch_handler, 1);
+	
 	memset(&tsp, 0, sizeof(tsp));
-    
-        tsp.dev = &pdev->dev;//me add 2012.04.14
 	
 	tsp.inputdevice = input_allocate_device();
 
@@ -1396,56 +1622,39 @@ static int __init touchscreen_probe(struct platform_device *pdev)
 			return -EINVAL;
 		}
 
+		//down_interruptible(&sem_touch_handler);
 		g_enable_touchscreen_handler = 1;
-		
+		//up(&sem_touch_handler);
 #endif // CONFIG_LATE_HANDLER_ENABLE
 
 		tsp.irq_enabled = 1;
 	}
 	
 	tsp.inputdevice->name = TOUCHSCREEN_NAME;
-	tsp.inputdevice->id.bustype = BUS_I2C;
+	tsp.inputdevice->evbit[0] = BIT_MASK(EV_KEY) | BIT_MASK(EV_ABS) | BIT_MASK(EV_SYN);//BIT(EV_ABS);me change
+	tsp.inputdevice->keybit[BIT_WORD(BTN_TOUCH)] = BIT_MASK(BTN_TOUCH);
+        //tsp.inputdevice->absbit[0] = BIT(ABS_X) | BIT(ABS_Y) | BIT(ABS_PRESSURE);
+        tsp.inputdevice->id.bustype = BUS_I2C;
 	tsp.inputdevice->id.vendor  = 0;
 	tsp.inputdevice->id.product =0;
  	tsp.inputdevice->id.version =0;
-#ifdef touch_mt
-	set_bit(EV_SYN, tsp.inputdevice->evbit);
-	set_bit(EV_KEY, tsp.inputdevice->evbit);
-	set_bit(EV_ABS, tsp.inputdevice->evbit);
-
-	input_set_abs_params(tsp.inputdevice, ABS_MT_POSITION_X, 0,
-					MAX_TOUCH_X_RESOLUTION, 0, 0);
-	input_set_abs_params(tsp.inputdevice, ABS_MT_POSITION_Y, 0,
-					MAX_TOUCH_Y_RESOLUTION, 0, 0);
-	input_set_abs_params(tsp.inputdevice, ABS_MT_TOUCH_MAJOR, 0,
-						MAX_TOUCH_MAJOR, 0, 0);
-	input_set_abs_params(tsp.inputdevice, ABS_MT_WIDTH_MAJOR, 0, 30, 0, 0);
-
-#else
-        tsp.inputdevice->evbit[0] = BIT_MASK(EV_KEY) | BIT_MASK(EV_ABS) | BIT_MASK(EV_SYN);//BIT(EV_ABS);me change
-	tsp.inputdevice->keybit[BIT_WORD(BTN_TOUCH)] = BIT_MASK(BTN_TOUCH);
         input_set_abs_params(tsp.inputdevice, ABS_X, 0, MAX_TOUCH_X_RESOLUTION, 0, 0);
         input_set_abs_params(tsp.inputdevice, ABS_Y, 0, MAX_TOUCH_Y_RESOLUTION, 0, 0);
         input_set_abs_params(tsp.inputdevice, ABS_PRESSURE, 0, 1, 0, 0);
-#endif
+
 	tsp_wq = create_singlethread_workqueue("tsp_wq");
-	INIT_WORK(&tsp.tsp_work, touchscreen_read);
-#ifdef touch_boost
-  	init_timer(&tsp.opp_set_timer);
-  	tsp.opp_set_timer.data = (unsigned long)&tsp; 
-  	tsp.opp_set_timer.function = tsc_timer_out;
-	INIT_WORK(&(tsp.constraint_wq), tsc_remove_constraint_handler);
-#endif
+	INIT_WORK(&tsp_work, touchscreen_read);
+
 #ifndef __CONFIG_CYPRESS_USE_RELEASE_BIT__
 	init_timer(&tsp_timer);
 	tsp_timer.expires = (jiffies + msecs_to_jiffies(60));
 	tsp_timer.function = tsp_timer_handler;
 #endif
-#ifdef __SYNAPTICS_UNSTABLE_TSP_RECOVERY__
+
 	init_timer(&tsp_rf_noise_recovery_timer);
 	tsp_rf_noise_recovery_timer.expires = (jiffies + msecs_to_jiffies(60));
 	tsp_rf_noise_recovery_timer.function = tsp_rf_noise_recovery_timer_handler;
-#endif
+
 	ret = input_register_device(tsp.inputdevice);
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	tsp.early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN + 1;
@@ -1463,7 +1672,7 @@ static int __init touchscreen_probe(struct platform_device *pdev)
         regulator_enable(tsp_rhandle);
 #endif
 	i2c_tsp_sensor_init();
-#if 0 //me close 2012.04.14	
+	
 	ret = device_create_file(&tsp.inputdevice->dev, &dev_attr_issp);
 
 #ifdef CONFIG_LATE_HANDLER_ENABLE
@@ -1477,7 +1686,7 @@ static int __init touchscreen_probe(struct platform_device *pdev)
 #ifdef __SYNAPTICS_UNSTABLE_TSP_RECOVERY__
 	ret = device_create_file(&tsp.inputdevice->dev, &dev_attr_rf_recovery_behavior);
 #endif
-#endif //me close
+
 #ifndef CONFIG_LATE_HANDLER_ENABLE
 	ret = i2c_tsp_sensor_read(g_version_read_addr, data, 2);
 	if(ret != 0)
@@ -1490,15 +1699,12 @@ static int __init touchscreen_probe(struct platform_device *pdev)
 #endif
 	printk("[TSP] success %s() !\n", __FUNCTION__);
 #if 1  //me add
-        //nowplus_enable_touch_pins(1);//me add
         touchscreen_poweron();
         ret = i2c_tsp_sensor_read(g_version_read_addr, data, 2);
 		if(ret != 0)
 		{
 			printk("[TSP][ERROR] %s() i2c_tsp_sensor_read error : %d\n", __FUNCTION__ , ret);
-#ifdef __TSP_I2C_ERROR_RECOVERY__
 			touch_ic_recovery();
-#endif
 		}
 		printk( "[TSP] touch driver version : %d.%d, firmware S/W Revision Info = %x\n", 
 			__TOUCH_DRIVER_MAJOR_VER__,__TOUCH_DRIVER_MINOR_VER__, data[0]);
@@ -1519,7 +1725,7 @@ static int touchscreen_remove(struct platform_device *pdev)
 
 	if (tsp.irq != -1)
 	{
-		
+		//down_interruptible(&sem_touch_handler);
 		if(g_enable_touchscreen_handler == 1)
 		{
 			free_irq(tsp.irq, &tsp);
@@ -1527,7 +1733,7 @@ static int touchscreen_remove(struct platform_device *pdev)
 		}else{
 			printk( "[TSP][WARNING] %s() handler is already disabled \n", __FUNCTION__);
 		}
-		
+		//up(&sem_touch_handler);
 	}
 #if 0 //me add
                 regulator_disable(tsp_rhandle);
@@ -1545,8 +1751,8 @@ static int touchscreen_suspend(struct platform_device *pdev, pm_message_t state)
 {
 // touch power is controled only by sysfs.
 	printk("touchscreen_suspend : touch power off\n");
-        touchscreen_poweronoff(0);
-        //nowplus_enable_touch_pins(0);//me add
+	touchscreen_poweronoff(0);
+        nowplus_enable_touch_pins(0);//me add
 	return 0;
 }
 
@@ -1554,9 +1760,9 @@ static int touchscreen_resume(struct platform_device *pdev)
 {
 // touch power is controled only by sysfs.
 	printk("touchscreen_resume : touch power on\n");
-        //nowplus_enable_touch_pins(1);//me add
-        touchscreen_poweronoff(1);
-        return 0;
+        nowplus_enable_touch_pins(1);//me add
+	touchscreen_poweronoff(1);
+	return 0;
 }
 
 static void touchscreen_device_release(struct device *dev)

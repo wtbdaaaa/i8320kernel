@@ -1,1 +1,0 @@
-cmd_drivers/media/video/isp/built-in.o :=  arm-none-eabi-ld -EL    -r -o drivers/media/video/isp/built-in.o drivers/media/video/isp/omap_previewer.o drivers/media/video/isp/omap_resizer.o drivers/media/video/isp/isp-mod.o 

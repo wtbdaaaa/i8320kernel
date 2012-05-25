@@ -1,1 +1,0 @@
-cmd_drivers/leds/built-in.o :=  arm-none-eabi-ld -EL    -r -o drivers/leds/built-in.o drivers/leds/led-core.o drivers/leds/led-class.o drivers/leds/led-triggers.o drivers/leds/leds-bd2802.o drivers/leds/ledtrig-timer.o drivers/leds/ledtrig-heartbeat.o 

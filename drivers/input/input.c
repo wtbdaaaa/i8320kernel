@@ -1636,7 +1636,7 @@ int input_register_device(struct input_dev *dev)
 	if (!dev->rep[REP_DELAY] && !dev->rep[REP_PERIOD]) {
 		dev->timer.data = (long) dev;
 		dev->timer.function = input_repeat_key;
-		dev->rep[REP_DELAY] = 750; //250;  // modified for dome longkey detection in android framework
+		dev->rep[REP_DELAY] = 250;//750; //250;  // modified for dome longkey detection in android framework
 		dev->rep[REP_PERIOD] = 33;
 	}
 

@@ -366,7 +366,8 @@ static struct omap_volt_data omap34xx_vdd1_volt_data[] = {
 	{.volt_nominal = 1350000, .sr_errminlimit = 0xFA, .vp_errgain = 0x20},
 	{.volt_nominal = 1375000, .sr_errminlimit = 0xFA, .vp_errgain = 0x20},
 	{.volt_nominal = 1437500, .sr_errminlimit = 0xFA, .vp_errgain = 0x20},
-	{.volt_nominal = 1450000, .sr_errminlimit = 0xFA, .vp_errgain = 0x20},
+	//{.volt_nominal = 1450000, .sr_errminlimit = 0xFA, .vp_errgain = 0x20},
+        {.volt_nominal = 1437500, .sr_errminlimit = 0xFA, .vp_errgain = 0x20},//me change 2012.05.20
 };
 #else
 
@@ -391,7 +392,7 @@ static struct omap_volt_data omap36xx_vdd1_volt_data[] = {
 #if 0 //me change 2012.05.17
 /* VDD2 */
 static struct omap_volt_data omap34xx_vdd2_volt_data[] = {
-	{.volt_nominal = 975000, .sr_errminlimit = 0xF9, .vp_errgain = 0x20},
+	//{.volt_nominal = 975000, .sr_errminlimit = 0xF9, .vp_errgain = 0x20},
 	{.volt_nominal = 1200000, .sr_errminlimit = 0xF9, .vp_errgain = 0x20},
 	{.volt_nominal = 1200000, .sr_errminlimit = 0xF9, .vp_errgain = 0x20},
 };
@@ -449,7 +450,8 @@ static struct omap_vdd_dep_volt omap34xx_vdd1_vdd2_data[] = {
 	{.main_vdd_volt = 1350000, .dep_vdd_volt = 1200000},
 	{.main_vdd_volt = 1375000, .dep_vdd_volt = 1200000},
 	{.main_vdd_volt = 1437500, .dep_vdd_volt = 1200000},
-	{.main_vdd_volt = 1450000, .dep_vdd_volt = 1200000},
+	//{.main_vdd_volt = 1450000, .dep_vdd_volt = 1200000},//me change 2012.05.20
+        {.main_vdd_volt = 1437500, .dep_vdd_volt = 1200000},
 	{.main_vdd_volt = 0, .dep_vdd_volt = 0},
 };
 

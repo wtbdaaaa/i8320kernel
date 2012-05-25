@@ -1,7 +1,7 @@
 /*
  * Automatically generated C config: don't edit
  * Linux kernel version: 2.6.35.7
- * Thu May 24 11:12:43 2012
+ * Thu May 24 09:47:50 2012
  */
 #define AUTOCONF_INCLUDED
 #define CONFIG_ARCH_OMAP 1
@@ -74,6 +74,7 @@
 #define CONFIG_MTD_DEBUG_VERBOSE 1
 #define CONFIG_TWL4030_CODEC 1
 #define CONFIG_DM_ZERO 1
+#define CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI4 1
 #define CONFIG_MTD_PARTITIONS 1
 #define CONFIG_SND_SOC 1
 #define CONFIG_CAN_PM_TRACE 1
@@ -381,7 +382,6 @@
 #define CONFIG_PM_RUNTIME 1
 #define CONFIG_OMAP2_DSS_VENC 1
 #define CONFIG_PARTITION_ADVANCED 1
-#define CONFIG_BT_BNEP_MC_FILTER 1
 #define CONFIG_NETFILTER_XT_MATCH_COMMENT 1
 #define CONFIG_NET 1
 #define CONFIG_INPUT_EVDEV 1
@@ -415,14 +415,12 @@
 #define CONFIG_HAVE_KPROBES 1
 #define CONFIG_CRYPTO_AES 1
 #define CONFIG_GPIOLIB 1
-#define CONFIG_BT_HCIUART_H4 1
 #define CONFIG_DEBUG_ERRORS 1
 #define CONFIG_MPU_BRIDGE 1
 #define CONFIG_NF_CONNTRACK_MARK 1
 #define CONFIG_NETFILTER 1
 #define CONFIG_NETFILTER_XT_MATCH_HASHLIMIT 1
 #define CONFIG_REGULATOR_TWL4030 1
-#define CONFIG_TOUCHSCREEN_NOWPLUS 1
 #define CONFIG_BT_BNEP 1
 #define CONFIG_BLK_DEV_RAM_COUNT 16
 #define CONFIG_INET_XFRM_MODE_TUNNEL 1
@@ -477,8 +475,7 @@
 #define CONFIG_SCHED_DEBUG 1
 #define CONFIG_DEFAULT_MMAP_MIN_ADDR 4096
 #define CONFIG_IP_NF_IPTABLES 1
-#define CONFIG_CMDLINE "root=31:0 rootfstype=yaffs2 rw mem=256M init=/init rootwait omapdss.def_disp=lcd omapfb.mode=lcd:480x800M-24@60 videoout=omap_vout omap_vout.video1_numbuffers=6 omap_vout.vid1_static_vrfb_alloc=y vram=4M omapfb.vram=0:4M omap_version=3430"
-#define CONFIG_BT_BNEP_PROTO_FILTER 1
+#define CONFIG_CMDLINE "root=31:0 rootfstype=yaffs2 rw mem=256M init=/init  rootwait omapdss.def_disp=lcd omapfb.mode=lcd:480x800M-24@60 videoout=omap_vout omap_vout.video1_numbuffers=6 omap_vout.vid1_static_vrfb_alloc=y vram=4M omapfb.vram=0:4M omap_version=3430"
 #define CONFIG_USB_ARCH_HAS_HCD 1
 #define CONFIG_ALIGNMENT_TRAP 1
 #define CONFIG_SCSI_MOD 1
@@ -705,7 +702,6 @@
 #define CONFIG_GPIO_TWL4030 1
 #define CONFIG_NET_ACTIVITY_STATS 1
 #define CONFIG_NLS_DEFAULT "iso8859-1"
-#define CONFIG_BT_HCIUART_BCSP 1
 #define CONFIG_CRYPTO_AEAD2 1
 #define CONFIG_DEBUG_INFO 1
 #define CONFIG_NET_IPIP 1

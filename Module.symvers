@@ -1383,7 +1383,6 @@
 0x00000000	kobject_init_and_add	vmlinux	EXPORT_SYMBOL_GPL
 0x00000000	__ip_select_ident	vmlinux	EXPORT_SYMBOL
 0x00000000	skb_gro_receive	vmlinux	EXPORT_SYMBOL_GPL
-0x00000000	touchscreen_poweronoff	vmlinux	EXPORT_SYMBOL
 0x00000000	twl6030_interrupt_mask	vmlinux	EXPORT_SYMBOL
 0x00000000	omap_dss_add_notify	vmlinux	EXPORT_SYMBOL
 0x00000000	gf128mul_init_64k_lle	vmlinux	EXPORT_SYMBOL
