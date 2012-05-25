@@ -1,0 +1,1 @@
+cmd_samsung/built-in.o :=  arm-none-eabi-ld -EL    -r -o samsung/built-in.o samsung/vibetonz/built-in.o samsung/dpram/built-in.o samsung/PL_sensor/built-in.o samsung/kxsd9/built-in.o samsung/multipdp/built-in.o samsung/fm_si4709/built-in.o 

@@ -1,0 +1,1 @@
+cmd_drivers/mfd/built-in.o :=  arm-none-eabi-ld -EL    -r -o drivers/mfd/built-in.o drivers/mfd/twl-core.o drivers/mfd/twl4030-irq.o drivers/mfd/twl6030-irq.o drivers/mfd/twl4030-power.o drivers/mfd/twl4030-codec.o drivers/mfd/mfd-core.o 

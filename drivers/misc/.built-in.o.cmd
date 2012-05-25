@@ -1,0 +1,1 @@
+cmd_drivers/misc/built-in.o :=  arm-none-eabi-ld -EL    -r -o drivers/misc/built-in.o drivers/misc/pmem.o drivers/misc/uid_stat.o drivers/misc/eeprom/built-in.o drivers/misc/cb710/built-in.o drivers/misc/wl127x-rfkill.o drivers/misc/fsa9480.o 
