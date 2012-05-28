@@ -457,6 +457,7 @@ static int P_ioctl(struct inode *inode, struct file *filp, unsigned int ioctl_cm
                     failed(2);
                 }
                 printk("[PROXIMITY] P_ioctl() case P_IOC_POWERUP_SET_MODE mode=%d \n", mode);
+                wake_lock(&P_sensor_wake_lock);//me add 2012.05.25
             }   
             break;
 
@@ -535,6 +536,7 @@ static int P_ioctl(struct inode *inode, struct file *filp, unsigned int ioctl_cm
                     failed(10);
                 }
                 printk("[PROXIMITY] P_ioctl() case P_IOC_SHUTDOWN  \n" );
+                wake_unlock(&P_sensor_wake_lock);//me add 2012.05.25
             }   
             break;
 
@@ -561,7 +563,7 @@ static int P_ioctl(struct inode *inode, struct file *filp, unsigned int ioctl_cm
 static irqreturn_t P_isr( int irq, void *unused )
 {
 	int ret = 0; // ryun
-	wake_lock_timeout(&P_sensor_wake_lock, 3*HZ);
+	//wake_lock_timeout(&P_sensor_wake_lock, 3*HZ);
         //wake_lock_timeout(&P_sensor_wake_lock, 1*HZ);//me change 2012.03
 	debug("[ryun] Proximity interrupt!! \n");
     trace_in(); 
