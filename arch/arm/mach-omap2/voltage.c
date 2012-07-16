@@ -373,12 +373,14 @@ static struct omap_volt_data omap34xx_vdd1_volt_data[] = {
 
 /* VDD1 */
 static struct omap_volt_data omap34xx_vdd1_volt_data[] = {
-	{.volt_nominal = 975000, .sr_errminlimit = 0xF4, .vp_errgain = 0x0C},
-	{.volt_nominal = 1075000, .sr_errminlimit = 0xF4, .vp_errgain = 0x0C},
+//	{.volt_nominal = 975000, .sr_errminlimit = 0xF4, .vp_errgain = 0x0C},
+ //       {.volt_nominal = 1100000, .sr_errminlimit = 0xF4, .vp_errgain = 0x0C},//me change 2012.06.11
+	{.volt_nominal = 1100000, .sr_errminlimit = 0xF4, .vp_errgain = 0x0C},//me change 2012.06.11
 	{.volt_nominal = 1200000, .sr_errminlimit = 0xF9, .vp_errgain = 0x18},
 	{.volt_nominal = 1270000, .sr_errminlimit = 0xF9, .vp_errgain = 0x18},
 	{.volt_nominal = 1350000, .sr_errminlimit = 0xF9, .vp_errgain = 0x18},
-        {.volt_nominal = 1375000, .sr_errminlimit = 0xF9, .vp_errgain = 0x18},//me change 2012.05.18
+        {.volt_nominal = 1400000, .sr_errminlimit = 0xF9, .vp_errgain = 0x18},//me change 2012.05.18
+        {.volt_nominal = 1450000, .sr_errminlimit = 0xF9, .vp_errgain = 0x18},//me change 2012.06.11
 };
 #endif
 
@@ -401,9 +403,9 @@ static struct omap_volt_data omap34xx_vdd2_volt_data[] = {
 
 /* VDD2 */
 static struct omap_volt_data omap34xx_vdd2_volt_data[] = {
-	//{.volt_nominal = 975000, .sr_errminlimit = 0xF4, .vp_errgain = 0x0C},
+	//{.volt_nominal = 975000, .sr_errminlimit = 0xF4, .vp_errgain = 0x0C},//me change 2012.06.09
 	{.volt_nominal = 1050000, .sr_errminlimit = 0xF4, .vp_errgain = 0x0C},
-	{.volt_nominal = 1150000, .sr_errminlimit = 0xF9, .vp_errgain = 0x18},
+        {.volt_nominal = 1150000, .sr_errminlimit = 0xF9, .vp_errgain = 0x18},
 };
 
 #endif
@@ -459,12 +461,14 @@ static struct omap_vdd_dep_volt omap34xx_vdd1_vdd2_data[] = {
 
 /* OMAP 3430 MPU Core VDD dependency table */
 static struct omap_vdd_dep_volt omap34xx_vdd1_vdd2_data[] = {
-	{.main_vdd_volt = 975000, .dep_vdd_volt = 1050000},
-	{.main_vdd_volt = 1075000, .dep_vdd_volt = 1050000},
+//	{.main_vdd_volt = 975000, .dep_vdd_volt = 1050000},
+//        {.main_vdd_volt = 1100000, .dep_vdd_volt = 1050000},//me change 2012.06.11
+	{.main_vdd_volt = 1100000, .dep_vdd_volt = 1050000},//me change 2012.06.11
 	{.main_vdd_volt = 1200000, .dep_vdd_volt = 1150000},
 	{.main_vdd_volt = 1270000, .dep_vdd_volt = 1150000},
 	{.main_vdd_volt = 1350000, .dep_vdd_volt = 1150000},
-        {.main_vdd_volt = 1375000, .dep_vdd_volt = 1150000},//me add 2012.05.18
+        {.main_vdd_volt = 1400000, .dep_vdd_volt = 1150000},//me add 2012.05.18
+        {.main_vdd_volt = 1450000, .dep_vdd_volt = 1150000},//me change 2012.06.11
 	{.main_vdd_volt = 0, .dep_vdd_volt = 0},
 };
 

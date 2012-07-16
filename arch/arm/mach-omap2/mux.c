@@ -23,7 +23,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  *
  */
-#define DEBUG 1
+//#define DEBUG 1
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/io.h>
@@ -201,8 +201,7 @@ static int __init _omap_mux_init_signal(struct omap_mux_partition *partition,
 					 "%s.%s 0x%04x -> 0x%04x\n",
 					 __func__, m0_entry, muxname,
 					old_mode, mux_mode);
-				
-				omap_mux_write(partition, mux_mode,
+			omap_mux_write(partition, mux_mode,
 					       m->reg_offset);
 				found++;
 			}

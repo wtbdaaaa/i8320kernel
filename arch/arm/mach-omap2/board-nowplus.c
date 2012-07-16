@@ -77,7 +77,7 @@
 #include "cm.h"
 #include "mux.h"
 
-#define archer_sleep //me add
+//#define archer_sleep //me add
 
 #include "sdram-nowplus.h"
 #include <linux/ctype.h>
@@ -1051,9 +1051,7 @@ static struct omap_board_config_kernel nowplus_config[] __initdata = {
 
         //"MOTOR EN" gpio_141
         OMAP3_MUX(MCBSP3_DR,            OMAP34XX_MUX_MODE4 | OMAP34XX_PIN_OUTPUT | OMAP34XX_PIN_OFF_INPUT_PULLDOWN),
-        //"TOUCH INT" gpio_142
-        //OMAP3_MUX(MCBSP3_CLKX,          OMAP34XX_MUX_MODE4 | OMAP34XX_PIN_INPUT_PULLUP | OMAP34XX_PIN_OFF_INPUT_PULLUP),
-//        OMAP3_MUX(MCBSP3_CLKX,          OMAP34XX_MUX_MODE4 | OMAP34XX_PIN_INPUT_PULLUP | OMAP34XX_PIN_OFF_NONE),//me ok
+        
 #ifndef FEATURE_SUSPEND_BY_DISABLING_POWER
 	//"TOUCH INT" gpio_142
 	OMAP3_MUX(MCBSP3_CLKX,  OMAP34XX_MUX_MODE4 | OMAP34XX_PIN_INPUT_PULLUP | OMAP34XX_PIN_OFF_NONE),
@@ -1301,8 +1299,8 @@ static struct omap_board_config_kernel nowplus_config[] __initdata = {
         //"NAND INT" gpio_13
         OMAP3_MUX(ETK_CTL,                      OMAP34XX_MUX_MODE4 | OMAP34XX_PIN_INPUT_PULLUP),
         //"ALARM_AP" gpio_14
-        OMAP3_MUX(ETK_D11,  OMAP34XX_MUX_MODE7),//me ok 2012.05.20
-        //OMAP3_MUX(ETK_D0,                       OMAP34XX_MUX_MODE4 | OMAP34XX_PIN_INPUT | OMAP34XX_PIN_OFF_INPUT),//me chnage
+        //OMAP3_MUX(ETK_D11,  OMAP34XX_MUX_MODE7),//me ok 2012.05.20
+        OMAP3_MUX(ETK_D0,                       OMAP34XX_MUX_MODE4 | OMAP34XX_PIN_INPUT | OMAP34XX_PIN_OFF_INPUT),//me chnage
 
         //"INTERRUPT FROM PHONE"  gpio_15
 
@@ -1565,7 +1563,7 @@ static struct regulator_init_data nowplus_aux3 = {
         .constraints = {
                 .min_uV                 = 1800000,
                 .max_uV                 = 1800000,
-                .boot_on                = true,
+                //.boot_on                = true,
                 .valid_modes_mask       = REGULATOR_MODE_NORMAL
                                         | REGULATOR_MODE_STANDBY,
                 .valid_ops_mask         = REGULATOR_CHANGE_MODE
@@ -1580,7 +1578,7 @@ static struct regulator_init_data nowplus_aux4 = {
         .constraints = {
                 .min_uV                 = 2800000,
                 .max_uV                 = 2800000,
-                .boot_on                = true,
+                //.boot_on                = true,
                 .valid_modes_mask       = REGULATOR_MODE_NORMAL
                                         | REGULATOR_MODE_STANDBY,
                 .valid_ops_mask         =  REGULATOR_CHANGE_MODE
@@ -1597,7 +1595,7 @@ static struct regulator_init_data nowplus_vpll2 = {
                 .name			= "VDVI",//me add
                 .min_uV                 = 1800000,
                 .max_uV                 = 1800000,
-                .boot_on                = true,
+                //.boot_on                = true,
                 .valid_modes_mask       = REGULATOR_MODE_NORMAL
                                         | REGULATOR_MODE_STANDBY,
                 .valid_ops_mask         = REGULATOR_CHANGE_MODE
@@ -2265,6 +2263,141 @@ static int __init omap_i2c_init(void)
 	return 0;
 }
 
+#if 1
+#if defined(CONFIG_MTD_ONENAND_OMAP2) || \
+	defined(CONFIG_MTD_ONENAND_OMAP2_MODULE)
+/*
+Adresses of the BML partitions
+
+minor position size blocks id
+
+  1: 0x00000000-0x00040000 0x00040000      2        0
+  2: 0x00040000-0x00640000 0x00600000     48        1
+  3: 0x00640000-0x00780000 0x00140000     10        2
+  4: 0x00780000-0x008c0000 0x00140000     10        3
+  5: 0x008c0000-0x00dc0000 0x00500000     40        4
+  6: 0x00dc0000-0x012c0000 0x00500000     40        5
+  7: 0x012c0000-0x02640000 0x01380000    156        6   initrd
+  8: 0x02640000-0x0da40000 0x0b400000   1440        7   factoryfs
+  9: 0x0da40000-0x1f280000 0x11840000   2242        8   datafs
+ 10: 0x1f280000-0x1f380000 0x00100000      8        9
+ 11: 0x1f380000-0x1f480000 0x00100000      8       10
+*/
+//  max size = 0x1f280000-0x012c0000 = 0x1dfc0000
+
+/*
+start at limo initrd partition
+leave blocks bevore untouched so we use odin to flash
+kernel to BML partiton
+
+new layout:
+   ____________
+  | 0x00000000 |    BML AREA, flash with odin
+  |    ...     |
+  | ---------- | -----------------------------
+  | 0x012c0000 |    MTD AREA, flash from linux
+  |    ...     |
+  | ---------- | -----------------------------
+  | 0x1f280000 |    reserved area
+  |    ...     |
+  | 0x1f480000 |
+  |____________|
+
+*/
+#define MTD_SPLASH_SIZE     3*(64*2048)
+#define MTD_START_OFFSET    (0x012c0000+MTD_SPLASH_SIZE)   
+#define MTD_MAX_SIZE        (0x1dfc0000-MTD_SPLASH_SIZE)  
+
+#ifdef CONFIG_MTD_PARTITIONS
+//for safety
+int check_mtd(struct mtd_partition *partitions , int cnt)
+{
+    int i;
+    int size=0;
+
+    //check start
+    if (partitions[0].offset != MTD_START_OFFSET)
+    {
+        printk("check_mtd failed: wrong offset of MTD start: 0x%08x!\n", (unsigned int)partitions[0].offset);
+        return 0;
+    }
+
+    for (i=0; i<cnt; i++)
+        size+=partitions[i].size;
+    if(size > MTD_MAX_SIZE)
+    {
+        printk("check_mtd failed: wrong size of MTD area: 0x%08x!\n", size);
+        return 0;
+    }
+
+    return 1;
+}
+
+static struct mtd_partition onenand_partitions[] = {
+    {
+		.name           = "misc",
+        .offset         = MTD_START_OFFSET,
+		.size           = 2*(64*2048),
+	},
+    {
+		.name           = "recovery",
+		.offset         = MTDPART_OFS_APPEND,
+		.size           = 40*(64*2048),
+	},
+	{
+		.name           = "boot",
+		.offset         = MTDPART_OFS_APPEND,
+		.size           = 40*(64*2048),
+	},
+	{
+		.name           = "system",
+		.offset         = MTDPART_OFS_APPEND,
+		.size           = 1312*(64*2048),
+	},
+    {
+		.name           = "cache",
+		.offset         = MTDPART_OFS_APPEND,
+		.size           = 40*(64*2048),
+	},
+    {
+		.name           = "userdata",
+		.offset         = MTDPART_OFS_APPEND,
+        .size           = 2401*(64*2048),
+    },
+
+};
+#endif
+static struct omap_onenand_platform_data board_onenand_data = {
+	.cs		= 0,
+	//.gpio_irq	= OMAP_GPIO_AP_NAND_INT,
+    .dma_channel = -1,  /* disable DMA in OMAP OneNAND driver */
+#ifdef CONFIG_MTD_PARTITIONS
+	.parts		= onenand_partitions,
+	.nr_parts	= ARRAY_SIZE(onenand_partitions),
+#endif
+	.flags		= ONENAND_SYNC_READWRITE,
+};
+
+static void __init board_onenand_init(void)
+{
+#ifdef CONFIG_MTD_PARTITIONS
+// only register if size and offset is correct
+    if(check_mtd(onenand_partitions, ARRAY_SIZE(onenand_partitions)))
+        gpmc_onenand_init(&board_onenand_data);
+#else
+    gpmc_onenand_init(&board_onenand_data);
+#endif
+}
+
+#else
+
+static inline void board_onenand_init(void)
+{
+}
+
+#endif
+
+#else
 #if defined(CONFIG_MTD_ONENAND_OMAP2) || \
 	defined(CONFIG_MTD_ONENAND_OMAP2_MODULE)
 /*
@@ -2402,6 +2535,7 @@ static inline void board_onenand_init(void)
 {
 }
 
+#endif
 #endif
 
 static inline void __init nowplus_init_lcd(void)

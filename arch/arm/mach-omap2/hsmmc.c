@@ -118,6 +118,15 @@ static void omap_hsmmc1_after_set_reg(struct device *dev, int slot,
 		else
 			reg |= OMAP2_PBIASLITEVMODE0;
 		omap_ctrl_writel(reg, control_pbias_offset);
+        udelay(4);   /* 4 microsec delay for comparator to generate an error*/
+//TI patch OMAPS00239755
+	    reg = omap_ctrl_readl(control_pbias_offset);
+
+		if (reg & OMAP343X_PBIASLITEVMODEERROR1) {
+		 	printk(KERN_ERR "Pbias Voltage is not same as LDO\n");
+					
+		}
+//TI patch OMAPS00239755
 	} else {
 		reg = omap_ctrl_readl(control_pbias_offset);
 		reg |= (OMAP2_PBIASSPEEDCTRL0 | OMAP2_PBIASLITEPWRDNZ0 |
@@ -309,7 +318,13 @@ void __init omap2_hsmmc_init(struct omap2_hsmmc_info *controllers)
 			mmc->name = "TIWLAN_SDIO";
 		}
 #endif
-
+#ifndef CONFIG_TIWLAN_SDIO
+/* CHKIM 2011/04/01 for TI-WIFI */
+	if (c->mmc == /* CONFIG_TIWLAN_MMC_CONTROLLER*/ 3) 
+	{
+		mmc->name = "TIWLAN_SDIO";
+	}
+#endif
 		mmc->slots[0].name = hc->name;
 		mmc->nr_slots = 1;
 		mmc->slots[0].caps = c->caps;
@@ -403,6 +418,9 @@ void __init omap2_hsmmc_init(struct omap2_hsmmc_info *controllers)
 						hsmmc23_before_set_reg;
 				mmc->slots[0].after_set_reg = NULL;
 			}
+#ifdef CONFIG_TIWLAN_SDIO
+			mmc->slots[0].ocr_mask  = MMC_VDD_165_195;
+#endif
 			break;
 		case 4:
 		case 5:

@@ -92,9 +92,10 @@ static u32 omap34xx_opp_def_size = ARRAY_SIZE(omap34xx_opp_def_list);
 
 static struct omap_opp_def __initdata omap34xx_opp_def_list[] = {
 	/* MPU OPP1 */
-	OMAP_OPP_DEF("mpu", true, 125000000, 975000),
+	//OMAP_OPP_DEF("mpu", true, 125000000, 975000),
+        //OMAP_OPP_DEF("mpu", true, 125000000, 1100000),//me change 2012.06.11
 	/* MPU OPP2 */
-	OMAP_OPP_DEF("mpu", true, 250000000, 1075000),
+	OMAP_OPP_DEF("mpu", true, 250000000, 1100000),//me change 2012.06.11
 	/* MPU OPP3 */
 	OMAP_OPP_DEF("mpu", true, 500000000, 1200000),
 	/* MPU OPP4 */
@@ -103,8 +104,10 @@ static struct omap_opp_def __initdata omap34xx_opp_def_list[] = {
 	OMAP_OPP_DEF("mpu", true, 600000000, 1350000),
         /* MPU OPP6 */
         //OMAP_OPP_DEF("mpu", true, 720000000, 1450000),
-	OMAP_OPP_DEF("mpu", true, 800000000, 1375000),//me change 2012.05.17
-
+	OMAP_OPP_DEF("mpu", true, 800000000, 1400000),//me change 2012.05.17
+        /* MPU OPP7 */
+	OMAP_OPP_DEF("mpu", true, 1000000000, 1450000),//me change 2012.06.11
+        
 	/*
 	 * L3 OPP1 - 41.5 MHz is disabled because: The voltage for that OPP is
 	 * almost the same than the one at 83MHz thus providing very little
@@ -113,17 +116,18 @@ static struct omap_opp_def __initdata omap34xx_opp_def_list[] = {
 	 * impact that frequency will do to the MPU and the whole system in
 	 * general.
 	 */
-	//OMAP_OPP_DEF("l3_main", false, 41500000, 975000),//me change 2012.05.17
+	//OMAP_OPP_DEF("l3_main", false, 41500000, 975000),//me change 2012.06.09
 	/* L3 OPP2 */
 	OMAP_OPP_DEF("l3_main", true, 83000000, 1050000),
-	/* L3 OPP3 */
+        /* L3 OPP3 */
 	OMAP_OPP_DEF("l3_main", true, 166000000, 1150000),
 
 
 	/* DSP OPP1 */
-	OMAP_OPP_DEF("iva", true, 90000000, 975000),
+	//OMAP_OPP_DEF("iva", true, 90000000, 975000),
+       // OMAP_OPP_DEF("iva", true, 90000000, 1100000),//me change 2012.06.11
 	/* DSP OPP2 */
-	OMAP_OPP_DEF("iva", true, 180000000, 1075000),
+	OMAP_OPP_DEF("iva", true, 180000000, 1100000),//me change 2012.05.17
 	/* DSP OPP3 */
 	OMAP_OPP_DEF("iva", true, 360000000, 1200000),
 	/* DSP OPP4 */
@@ -131,8 +135,11 @@ static struct omap_opp_def __initdata omap34xx_opp_def_list[] = {
 	/* DSP OPP5 */
 	OMAP_OPP_DEF("iva", true, 430000000, 1350000),
         /* DSP OPP6 */
-	//OMAP_OPP_DEF("iva", true, 520000000, 1450000),
-        OMAP_OPP_DEF("iva", true, 520000000, 1375000),//me change 2012.05.17
+	//OMAP_OPP_DEF("iva", true, 520000000, 1375000),
+        OMAP_OPP_DEF("iva", true, 520000000, 1400000),//me change 2012.05.17
+        //OMAP_OPP_DEF("iva", true, 520000000, 1450000),
+        OMAP_OPP_DEF("iva", true, 600000000, 1450000),//me change 2012.05.17
+
 };
 static u32 omap34xx_opp_def_size = ARRAY_SIZE(omap34xx_opp_def_list);
 
